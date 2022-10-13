@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Head from "next/head";
 
 export default function HomePage() {
   const [name, setName] = useState(null);
@@ -15,6 +16,9 @@ export default function HomePage() {
 
   return (
     <div className="text-center bg-pink-300 min-h-screen flex flex-col items-center justify-center font-spectral">
+      <Head>
+        <title>June's Dragon Generator</title>
+      </Head>
       <div className=" bg-white p-4 w-full max-w-md">
         <h1 className="text-2xl font-semibold mb-4">June's Dragon Generator</h1>
         <button
