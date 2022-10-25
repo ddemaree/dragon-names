@@ -11,7 +11,7 @@ export async function getServerSideProps({ params }) {
     where: { id: params.storyId },
   });
 
-  story.createdAt = story.createdAt.toISOString();
+  if (story.createdAt) story.createdAt = story.createdAt.toISOString();
 
   return {
     props: {
