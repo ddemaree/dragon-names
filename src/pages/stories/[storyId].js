@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { micromark } from "micromark";
+import Head from "next/head";
 import DragonButton from "../../components/DragonButton";
 import DragonName from "../../components/DragonName";
 import Layout from "../../components/Layout";
@@ -20,6 +21,9 @@ export async function getServerSideProps({ params }) {
 export default function StoryPage({ story }) {
   return (
     <Layout>
+      <Head>
+        <title>The story of {story.name}, from June's Dragon Generator</title>
+      </Head>
       <DragonName name={story.name} dragonType={story.type} />
       <div
         className="text-left text-lg [&>*+*]:mt-6"
