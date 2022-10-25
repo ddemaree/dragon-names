@@ -1,6 +1,9 @@
 import fs from "fs/promises";
-import { get } from "https";
+import _ from "lodash";
 import path from "path";
+import { getDragonStory } from "../../getDragonStory";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 function randomIntFromInterval(min, max) {
   // min and max included
@@ -21,12 +24,12 @@ async function makeDragonName() {
 
   let fullWord = startWord + endWord;
 
-  return fullWord;
+  return _.capitalize(fullWord);
 }
 
 async function getDragonType() {
   let types = await getData("dragon-types");
-  return types[randomIntFromInterval(0, types.length - 1)];
+  return _.capitalize(types[randomIntFromInterval(0, types.length - 1)]);
 }
 
 export default async function handler(req, res) {
@@ -36,5 +39,15 @@ export default async function handler(req, res) {
 
   let type = await getDragonType();
 
-  res.status(200).json({ name, type });
+  let story = await getDragonStory(name, type);
+
+  const dbStory = await prisma.story.create({
+    data: {
+      name,
+      type,
+      story,
+    },
+  });
+
+  res.status(200).json({ name, type, story, id: dbStory.id });
 }
