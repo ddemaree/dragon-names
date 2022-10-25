@@ -17,4 +17,5 @@ model Story {
   name  String
   type  String
   story String  @db.Text
+  createdAt DateTime @default(now())
 }
