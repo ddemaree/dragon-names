@@ -7,9 +7,11 @@ import Layout from "../../components/Layout";
 const prisma = new PrismaClient();
 
 export async function getServerSideProps({ params }) {
-  const story = await prisma.story.findUnique({
+  let story = await prisma.story.findUnique({
     where: { id: params.storyId },
   });
+
+  story.createdAt = story.createdAt.toISOString();
 
   return {
     props: {
