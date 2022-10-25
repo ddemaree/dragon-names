@@ -6,6 +6,7 @@ module.exports = {
       fontFamily: {
         spectral: "Spectral",
         "spectral-sc": "Spectral SC",
+        sans: "Inter, Arial, sans-serif",
       },
     },
   },

@@ -1,10 +1,9 @@
-import { PrismaClient } from "@prisma/client";
 import { micromark } from "micromark";
 import Head from "next/head";
 import DragonButton from "../../components/DragonButton";
 import DragonName from "../../components/DragonName";
 import Layout from "../../components/Layout";
-const prisma = new PrismaClient();
+import prisma from "../../lib/prisma";
 
 export async function getServerSideProps({ params }) {
   let story = await prisma.story.findUnique({
