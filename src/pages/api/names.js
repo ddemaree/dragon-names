@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import _ from "lodash";
 import path from "path";
-import { getDragonStory } from "../../getDragonStory";
+import { getDragonStory } from "../../lib/getDragonStory";
 import prisma from "../../lib/prisma";
 
 function randomIntFromInterval(min, max) {
