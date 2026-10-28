@@ -36,12 +36,31 @@ function readOptions(options: Json) {
   };
 }
 
+// The story's opening, as plain text short enough for a link preview
+function excerpt(markdown: string, maxLength = 200) {
+  const text = markdown.replace(/[*_#>`]/g, "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, text.lastIndexOf(" ", maxLength))}…`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const story = await getStory((await params).storyId);
+  const { storyId } = await params;
+  const story = await getStory(storyId);
+  if (!story) return { title: "Dragon Generator" };
+
+  const title = `The story of ${story.name}, from Dragon Generator`;
+  const description = excerpt(story.story);
   return {
-    title: story
-      ? `The story of ${story.name}, from Dragon Generator`
-      : "Dragon Generator",
+    title,
+    description,
+    // Open Graph settings replace the layout's rather than merging, so repeat the site name
+    openGraph: {
+      siteName: "Dragon Generator",
+      title,
+      description,
+      type: "article",
+      url: `/stories/${storyId}`,
+    },
   };
 }
 

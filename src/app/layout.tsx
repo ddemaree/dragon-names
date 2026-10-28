@@ -24,8 +24,21 @@ const polymath = localFont({
   variable: "--next-font-polymath",
 });
 
+const description =
+  "Pick a dragon, a warrior cat, a mythical teen or a D&D party, choose a place and a mood, and get a short story written just for you.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://dragongenerator.fun"),
   title: "Dragon Generator",
+  description,
+  openGraph: {
+    siteName: "Dragon Generator",
+    title: "Dragon Generator",
+    description,
+    type: "website",
+    url: "/",
+  },
+  twitter: { card: "summary" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
