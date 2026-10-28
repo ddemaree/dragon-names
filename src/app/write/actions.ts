@@ -2,6 +2,8 @@
 
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { dispatchesDragon, offTopicProbability } from "@/lib/enforcement";
+import { GENRES } from "@/lib/prompt";
 import { createServerClient } from "@/lib/supabase";
 import { awaitingRoll, type Check, type Idea, isTurnConnector } from "@/lib/tale";
 import { checkPrompt, cleanCheck, cleanIdea, getTale, ideasPrompt, rollHeroes, TALE_INSTRUCTIONS } from "@/lib/tales";
@@ -40,6 +42,20 @@ export async function suggestIdeas(taleId: string, connector: string, avoid: str
   } finally {
     await flushTelemetry();
   }
+}
+
+// D20 Mode sends a write-in to the story model in callCheck. This runs first, and only for that text.
+export async function enforcementCheck(taleId: string, writerText: string) {
+  const tale = await getTale(taleId);
+  if (!tale || !(await canEdit(tale))) throw new Error("Can't check this story");
+
+  const probability = await offTopicProbability({
+    genre: GENRES[tale.hero.kind],
+    hero: tale.hero.name,
+    writerText: cleanIdea(writerText),
+    sessionId: tale.id,
+  });
+  return { probability, dispatch: dispatchesDragon(probability) };
 }
 
 // D20 Mode: the DM decides whether an idea needs a roll; null means it just happens
