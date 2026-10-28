@@ -1,3 +1,4 @@
+import { MAX_DETAILS_LENGTH } from "@/lib/hero-draft";
 import { DEFAULT_MODEL } from "@/lib/models";
 import { createServerClient } from "@/lib/supabase";
 import { isHero } from "@/lib/tale";
@@ -9,13 +10,18 @@ import { ensureWriterId } from "@/lib/writer";
 export async function POST(request: Request) {
   const body: unknown = await request.json().catch(() => null);
   const hero: unknown = body && typeof body === "object" ? Reflect.get(body, "hero") : null;
-  if (!isHero(hero)) return new Response("Invalid hero", { status: 400 });
+  if (!isHero(hero) || !cleanIdea(hero.name)) return new Response("Invalid hero", { status: 400 });
 
   const { data: tale, error } = await createServerClient()
     .from("tales")
     .insert({
-      // Rolled heroes come from the browser, so they're capped like any other writer text
-      hero: { kind: hero.kind, name: cleanIdea(hero.name, 60), type: cleanIdea(hero.type, 300) },
+      // Heroes come from the browser, rolled or built, so they're capped like any other writer text
+      hero: {
+        kind: hero.kind,
+        name: cleanIdea(hero.name, 60),
+        type: cleanIdea(hero.type, 300),
+        ...(hero.details ? { details: cleanIdea(hero.details, MAX_DETAILS_LENGTH) } : {}),
+      },
       model: DEFAULT_MODEL,
       writer: await ensureWriterId(),
     })

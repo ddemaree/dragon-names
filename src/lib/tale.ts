@@ -2,7 +2,8 @@
 
 import { type CharacterKind, isCharacterKind } from "./characters";
 
-export type Hero = { kind: CharacterKind; name: string; type: string };
+// `details` is what the writer added about a hero they built themselves
+export type Hero = { kind: CharacterKind; name: string; type: string; details?: string };
 
 // "once" opens the story and "end" closes it; the writer picks among the rest each turn
 export const CONNECTORS = {
@@ -53,7 +54,13 @@ export function isHero(value: unknown): value is Hero {
   const kind: unknown = Reflect.get(value, "kind");
   const name: unknown = Reflect.get(value, "name");
   const type: unknown = Reflect.get(value, "type");
-  return isCharacterKind(kind) && typeof name === "string" && typeof type === "string";
+  const details: unknown = Reflect.get(value, "details");
+  return (
+    isCharacterKind(kind) &&
+    typeof name === "string" &&
+    typeof type === "string" &&
+    (details === undefined || typeof details === "string")
+  );
 }
 
 function isPart(value: unknown): value is Part {

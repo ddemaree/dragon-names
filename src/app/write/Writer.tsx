@@ -13,6 +13,7 @@ import {
 import DragonButton from "@/components/DragonButton";
 import Icon from "@/components/Icon";
 import { possessive, withArticle } from "@/lib/characters";
+import { type Draft, heroFromDraft, type HeroWords } from "@/lib/hero-draft";
 import { KIND_ICONS } from "@/lib/icons";
 import {
   CONNECTORS,
@@ -26,11 +27,19 @@ import {
 } from "@/lib/tale";
 import { keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
 import FinishedBook from "./FinishedBook";
+import HeroBuilder from "./HeroBuilder";
 
 type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean; title: string | null; book: string | null };
 
 // A story opened by anyone other than its writer is read-only
-type Props = { initialHeroes?: Hero[]; initialTale?: Tale; editable?: boolean };
+type Props = {
+  initialHeroes?: Hero[];
+  // For "Build my own hero"
+  heroWords?: HeroWords;
+  initialDraft?: Draft;
+  initialTale?: Tale;
+  editable?: boolean;
+};
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -50,10 +59,12 @@ function heroLine(hero: Hero) {
   return hero.kind === "dragons" ? `${withArticle(hero.type)} dragon` : withArticle(hero.type);
 }
 
-export default function Writer({ initialHeroes = [], initialTale, editable = true }: Props) {
+export default function Writer({ initialHeroes = [], heroWords, initialDraft, initialTale, editable = true }: Props) {
   const [tale, setTale] = useState<Tale | null>(initialTale ?? null);
   const [heroes, setHeroes] = useState(initialHeroes);
-  const [heroIndex, setHeroIndex] = useState(0);
+  // A rolled hero, or "own" for the one the writer is building
+  const [heroIndex, setHeroIndex] = useState<number | "own">(0);
+  const [draft, setDraft] = useState(initialDraft);
   // The part being written right now
   const [pending, setPending] = useState<{ connector: Connector; idea: string; text: string } | null>(null);
   const [connector, setConnector] = useState<TurnConnector>(nextConnector(initialTale?.parts.at(-1)?.connector));
@@ -114,8 +125,12 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
     if (posthogConfigured) posthog.capture("tale_part_written", { connector: next, ideaSource });
   }
 
+  const builtHero = heroIndex === "own" && draft ? heroFromDraft(draft) : null;
+  const builtHeroReady = Boolean(builtHero && draft?.pieces[draft.kind].every((piece) => piece.trim()));
+  const chosenHero = heroIndex === "own" ? (builtHeroReady ? builtHero : null) : heroes[heroIndex];
+
   async function startStory() {
-    const hero = heroes[heroIndex];
+    const hero = chosenHero;
     if (!hero) return;
     setBusy(true);
     try {
@@ -132,7 +147,7 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
       setTale(created);
       setPending({ connector: "once", idea: "", text: "" });
       window.history.replaceState(null, "", `/write/${id}`);
-      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind });
+      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind, built: heroIndex === "own" });
       await readPart(response, created, "once", "", "none");
     } finally {
       setBusy(false);
@@ -175,7 +190,7 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
           <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight sm:text-6xl">
             Who is this story about?
           </h1>
-          <p className={clsx("text-lg text-pink", aiVoice)}>Pick one, or roll for new ones.</p>
+          <p className={clsx("text-lg text-pink", aiVoice)}>Pick one, roll for new ones, or build your own.</p>
         </header>
 
         <section className="flex flex-col gap-3.5">
@@ -212,7 +227,19 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
           </button>
         </section>
 
-        <DragonButton onClick={startStory} disabled={busy || heroes.length === 0}>
+        {heroWords && draft && (
+          <HeroBuilder
+            words={heroWords}
+            draft={draft}
+            selected={heroIndex === "own"}
+            onChange={(next) => {
+              setDraft(next);
+              setHeroIndex("own");
+            }}
+          />
+        )}
+
+        <DragonButton onClick={startStory} disabled={busy || !chosenHero}>
           Start the story
         </DragonButton>
       </>

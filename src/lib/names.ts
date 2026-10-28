@@ -2,6 +2,7 @@ import "server-only";
 import fs from "fs/promises";
 import path from "path";
 import { type CharacterKind, withArticle } from "./characters";
+import { type HeroWords, pick, pickMany, rollMembers } from "./hero-draft";
 
 export type Character = {
   name: string;
@@ -15,19 +16,19 @@ function capitalize(word: string) {
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
-function pick<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-// Picks `count` different items
-function pickMany<T>(items: T[], count: number): T[] {
-  return [...items].sort(() => Math.random() - 0.5).slice(0, count);
-}
-
 async function getData(kind: CharacterKind, name: string) {
   const dataPath = path.join(process.cwd(), `data/${kind}/${name}.txt`);
   const contents = await fs.readFile(dataPath, "utf8");
   return contents.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+async function getPartyWords() {
+  const [names, species, classes] = await Promise.all([
+    getData("dnd-party", "first-names"),
+    getData("dnd-party", "species"),
+    getData("dnd-party", "classes"),
+  ]);
+  return { names, species, classes };
 }
 
 async function makeDragonName() {
@@ -84,12 +85,7 @@ async function makeTeen(): Promise<Character> {
 
 async function makeParty(): Promise<Character> {
   const name = `The ${pick(await getData("dnd-party", "party-name-starts"))} ${pick(await getData("dnd-party", "party-name-ends"))}`;
-  const species = await getData("dnd-party", "species");
-  const classes = await getData("dnd-party", "classes");
-  const names = pickMany(await getData("dnd-party", "first-names"), 3 + Math.round(Math.random()));
-
-  const members = names.map((member) => `${member} the ${pick(species)} ${pick(classes)}`);
-  const type = `${members.slice(0, -1).join(", ")}, and ${members.at(-1)}`;
+  const type = rollMembers(await getPartyWords());
 
   return {
     name,
@@ -109,4 +105,32 @@ export function makeCharacter(kind: CharacterKind) {
     case "dnd-party":
       return makeParty();
   }
+}
+
+// Every word list "Build my own hero" offers, capitalized the way names show them
+export async function getHeroWords(): Promise<HeroWords> {
+  const words = async (kind: CharacterKind, name: string) => (await getData(kind, name)).map(capitalize);
+  const [dragonStarts, dragonEnds, dragonTypes, prefixes, suffixes, roles, clans, firstNames, lastNames, teenTypes, partyStarts, partyEnds, party] =
+    await Promise.all([
+      words("dragons", "start-words"),
+      words("dragons", "end-words"),
+      words("dragons", "dragon-types"),
+      getData("warrior-cats", "prefixes"),
+      getData("warrior-cats", "suffixes"),
+      getData("warrior-cats", "roles"),
+      getData("warrior-cats", "clans"),
+      getData("teens", "first-names"),
+      getData("teens", "last-names"),
+      getData("teens", "types"),
+      getData("dnd-party", "party-name-starts"),
+      getData("dnd-party", "party-name-ends"),
+      getPartyWords(),
+    ]);
+  return {
+    dragons: { pieces: [dragonStarts, dragonEnds], choices: [dragonTypes] },
+    "warrior-cats": { pieces: [prefixes, suffixes], choices: [roles, clans] },
+    teens: { pieces: [firstNames, lastNames], choices: [teenTypes] },
+    "dnd-party": { pieces: [partyStarts, partyEnds], choices: [] },
+    party,
+  };
 }
