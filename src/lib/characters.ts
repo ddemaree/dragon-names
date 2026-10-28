@@ -7,7 +7,7 @@ export const CHARACTER_KINDS = {
   dragons: {
     label: "Dragon",
     button: "Make me a dragon",
-    nameLabel: "Your dragon's name is:",
+    nameLabel: "Your dragon's name is",
     typeLabel: "and they are",
     settings: [
       "a desert",
@@ -20,7 +20,7 @@ export const CHARACTER_KINDS = {
   "warrior-cats": {
     label: "Warrior cat",
     button: "Make me a warrior cat",
-    nameLabel: "Your warrior cat's name is:",
+    nameLabel: "Your warrior cat's name is",
     typeLabel: "and they are",
     settings: [
       "a forest",
@@ -33,7 +33,7 @@ export const CHARACTER_KINDS = {
   teens: {
     label: "Mythical teen",
     button: "Make me a mythical teen",
-    nameLabel: "Your hero is:",
+    nameLabel: "Your hero is",
     typeLabel: "and they are",
     settings: [
       "a high school",
@@ -47,7 +47,7 @@ export const CHARACTER_KINDS = {
   "dnd-party": {
     label: "D&D party",
     button: "Make me a D&D party",
-    nameLabel: "Your party is:",
+    nameLabel: "Your party is",
     typeLabel: "made up of",
     settings: [
       "a druids' grove",

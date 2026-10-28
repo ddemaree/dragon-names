@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { config } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
+
+// The stylesheet above is bundled, so Font Awesome shouldn't inject it again at runtime
+config.autoAddCss = false;
 
 // Font files are licensed, so they're downloaded at build time by scripts/fetch-fonts.mjs
 const roslindale = localFont({

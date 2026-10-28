@@ -5,3 +5,35 @@
   --font-display: var(--next-font-roslindale), Georgia, serif;
   --font-sans: var(--next-font-polymath), Arial, sans-serif;
 }
+
+/* Night flight palette (DEM-11) */
+@theme {
+  --color-night: #150d2b;
+  --color-ink: #f4eeff;
+  --color-ink-soft: #ede6ff;
+  --color-lilac: #e3dafa;
+  --color-muted: #c9beea;
+  --color-pink: #ffb8dd;
+  --color-hot-pink: #ff8fc8;
+  --color-peach: #ffd3a6;
+  --color-orange: #ffb070;
+  --color-sky: #7cc8ff;
+  --color-pale-sky: #a9dcff;
+  --color-violet: #8b6cff;
+  --color-deep-violet: #5b3fd9;
+}
+
+body {
+  background-color: var(--color-night);
+  color: var(--color-ink);
+}
+
+/* Glowing gradient blobs behind every page */
+.night-sky {
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 111 181 / 0.55) 0, transparent 32%),
+    radial-gradient(circle at 90% 18%, rgb(94 200 255 / 0.45) 0, transparent 30%),
+    radial-gradient(circle at 78% 92%, rgb(255 176 112 / 0.4) 0, transparent 30%),
+    radial-gradient(circle at 18% 80%, rgb(139 108 255 / 0.55) 0, transparent 34%),
+    var(--color-night);
+}

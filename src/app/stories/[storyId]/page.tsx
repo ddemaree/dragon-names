@@ -6,7 +6,7 @@ import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
 import Layout from "@/components/Layout";
 import type { Json } from "@/lib/database.types";
-import { isCharacterKind } from "@/lib/characters";
+import { type CharacterKind, isCharacterKind, isSliderId, type SliderId } from "@/lib/characters";
 import { createServerClient } from "@/lib/supabase";
 
 type Props = { params: Promise<{ storyId: string }> };
@@ -21,11 +21,19 @@ const getStory = cache(async (id: string) => {
 });
 
 // Stories saved before character kinds existed have no `kind`; they're dragons
-function kindFromOptions(options: Json) {
-  if (options && typeof options === "object" && !Array.isArray(options)) {
-    if (isCharacterKind(options.kind)) return options.kind;
+function readOptions(options: Json) {
+  const kind: CharacterKind = "dragons";
+  if (!options || typeof options !== "object" || Array.isArray(options)) return { kind };
+
+  const sliders: Partial<Record<SliderId, number>> = {};
+  for (const [id, value] of Object.entries(options)) {
+    if (isSliderId(id) && typeof value === "number") sliders[id] = value;
   }
-  return "dragons";
+  return {
+    kind: isCharacterKind(options.kind) ? options.kind : kind,
+    setting: typeof options.setting === "string" ? options.setting : undefined,
+    sliders,
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -43,14 +51,12 @@ export default async function StoryPage({ params }: Props) {
 
   return (
     <Layout>
-      <CharacterCard kind={kindFromOptions(story.options)} name={story.name} type={story.type} />
-      <div
-        className="text-left text-lg [&>*+*]:mt-6"
+      <CharacterCard {...readOptions(story.options)} name={story.name} type={story.type} />
+      <article
+        className="flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-8 text-[19px] leading-relaxed text-ink-soft shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)] sm:px-11 sm:py-10"
         dangerouslySetInnerHTML={{ __html: micromark(story.story) }}
       />
-      <div className="mt-10 border-t border-pink-500 py-8">
-        <DragonButton href="/">Make me another story</DragonButton>
-      </div>
+      <DragonButton href="/">Make me another story</DragonButton>
     </Layout>
   );
 }

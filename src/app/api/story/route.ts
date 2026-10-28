@@ -46,6 +46,8 @@ export async function POST(request: Request) {
       "x-story-id": id,
       "x-character-name": encodeURIComponent(name),
       "x-character-type": encodeURIComponent(type),
+      // "Surprise me" is resolved here, so the page learns the setting from the response
+      "x-story-setting": encodeURIComponent(options.setting ?? ""),
     },
   });
 }
