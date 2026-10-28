@@ -45,6 +45,7 @@ export type Database = {
         Row: {
           book: string | null
           created_at: string
+          d20: boolean
           finished: boolean
           hero: Json
           id: string
@@ -57,6 +58,7 @@ export type Database = {
         Insert: {
           book?: string | null
           created_at?: string
+          d20?: boolean
           finished?: boolean
           hero: Json
           id?: string
@@ -69,6 +71,7 @@ export type Database = {
         Update: {
           book?: string | null
           created_at?: string
+          d20?: boolean
           finished?: boolean
           hero?: Json
           id?: string

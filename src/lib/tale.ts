@@ -27,6 +27,9 @@ export const CONNECTORS = {
     question: "What happens because of that?",
   },
   end: { word: "The end.", color: "#fff" },
+  // In D20 Mode, a roll of 1 or 20 gives the DM's part its own connector
+  ohno: { word: "Oh no…", color: "#ff8fa3" },
+  legendary: { word: "Legendary!", color: "var(--color-peach)" },
 } as const;
 
 export type Connector = keyof typeof CONNECTORS;
@@ -37,6 +40,9 @@ export function isTurnConnector(value: unknown): value is TurnConnector {
   return value === "and" || value === "but" || value === "so";
 }
 
+// D20 Mode: a risky idea needs a roll of `target` or more
+export type Check = { name: string; target: number; reason: string };
+
 export type Part = {
   connector: Connector;
   // What the writer picked or typed; empty for the opening and the ending
@@ -44,7 +50,13 @@ export type Part = {
   ideaSource: "option" | "write-in" | "none";
   // Written by the AI
   text: string;
+  // D20 Mode: the writer's part that called for a check, and the DM's part written from the roll
+  check?: Check;
+  roll?: { value: number; check: Check };
 };
+
+// An idea for the next part; in D20 Mode, risky ones name the check they'll need
+export type Idea = { text: string; check: string | null };
 
 // A write-in is "a few words"; anything longer is cut off before it reaches the model
 export const MAX_IDEA_LENGTH = 120;
@@ -80,7 +92,28 @@ export function readParts(value: unknown): Part[] {
 
 // After a "But", show what it changed; otherwise add a problem
 export function nextConnector(previous: Connector | undefined): TurnConnector {
-  return previous === "but" ? "so" : "but";
+  return previous === "but" || previous === "ohno" ? "so" : "but";
+}
+
+export function isCheck(value: unknown): value is Check {
+  if (!value || typeof value !== "object") return false;
+  return (
+    typeof Reflect.get(value, "name") === "string" &&
+    Number.isInteger(Reflect.get(value, "target")) &&
+    typeof Reflect.get(value, "reason") === "string"
+  );
+}
+
+// The d20 picks the connector the DM writes with; a miss still moves the story
+export function rollConnector(roll: number, target: number): Connector {
+  if (roll === 1) return "ohno";
+  if (roll === 20) return "legendary";
+  return roll >= target ? "and" : "but";
+}
+
+// The DM's part is waiting on a roll when the last part called for a check
+export function awaitingRoll(parts: Part[]) {
+  return parts.at(-1)?.check;
 }
 
 // A streamed book puts its title on the first line

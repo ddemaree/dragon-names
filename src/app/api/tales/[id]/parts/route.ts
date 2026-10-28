@@ -1,5 +1,5 @@
-import { type Connector, isTurnConnector, type Part } from "@/lib/tale";
-import { cleanIdea, getTale, streamPart } from "@/lib/tales";
+import { awaitingRoll, type Connector, isTurnConnector, type Part } from "@/lib/tale";
+import { cleanCheck, cleanIdea, getTale, streamPart } from "@/lib/tales";
 import { canEdit } from "@/lib/writer";
 
 // Writes the next part of a storytelling-mode story and appends it once it's done
@@ -8,6 +8,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!tale || tale.finished) return new Response("Story not found", { status: 404 });
   // Shared links are read-only; only the browser that started the story can continue it
   if (!(await canEdit(tale))) return new Response("Only the writer can add to this story", { status: 403 });
+  // In D20 Mode, a part that called for a check is followed by the DM's part, from the roll
+  if (awaitingRoll(tale.parts)) return new Response("Waiting for a roll", { status: 409 });
 
   const body: unknown = await request.json().catch(() => null);
   const input = body && typeof body === "object" ? body : {};
@@ -26,5 +28,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? "write-in"
       : "option";
 
-  return streamPart(tale, connector, idea, ideaSource);
+  // D20 Mode: a risky idea's part stops before we find out whether it works
+  const check = tale.d20 && idea && isTurnConnector(connector) ? cleanCheck(Reflect.get(input, "check")) : null;
+
+  return streamPart(tale, { connector, idea, ideaSource, ...(check ? { check } : {}) });
 }

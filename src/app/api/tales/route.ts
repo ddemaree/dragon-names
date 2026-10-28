@@ -23,11 +23,16 @@ export async function POST(request: Request) {
         ...(hero.details ? { details: cleanIdea(hero.details, MAX_DETAILS_LENGTH) } : {}),
       },
       model: DEFAULT_MODEL,
+      d20: Reflect.get(body ?? {}, "d20") === true,
       writer: await ensureWriterId(),
     })
     .select("id, hero, model")
     .single();
   if (error || !isHero(tale.hero)) return new Response("Couldn't start the story", { status: 500 });
 
-  return streamPart({ ...tale, hero: tale.hero, parts: [] }, "once", "", "none", { "x-tale-id": tale.id });
+  return streamPart(
+    { ...tale, hero: tale.hero, parts: [] },
+    { connector: "once", idea: "", ideaSource: "none" },
+    { "x-tale-id": tale.id },
+  );
 }

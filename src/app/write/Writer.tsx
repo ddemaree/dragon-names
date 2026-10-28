@@ -17,20 +17,38 @@ import { possessive, withArticle } from "@/lib/characters";
 import { type Draft, heroFromDraft, type HeroWords } from "@/lib/hero-draft";
 import { KIND_ICONS } from "@/lib/icons";
 import {
+  awaitingRoll,
+  type Check,
   CONNECTORS,
-  type Connector,
   type Hero,
+  type Idea,
   MAX_IDEA_LENGTH,
   nextConnector,
   type Part,
+  rollConnector,
   TURN_CONNECTORS,
   type TurnConnector,
 } from "@/lib/tale";
-import { keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
+import { callCheck, keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
+import { CheckPanel, dmVoice, RollCard } from "./DiceCheck";
 import FinishedBook from "./FinishedBook";
 import HeroBuilder from "./HeroBuilder";
 
-type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean; title: string | null; book: string | null };
+type Tale = {
+  id: string;
+  hero: Hero;
+  parts: Part[];
+  finished: boolean;
+  title: string | null;
+  book: string | null;
+  // D20 Mode: risky ideas need a dice check, and the DM writes the outcome
+  d20: boolean;
+};
+
+// D20 Mode: the writer's turn while the DM calls a check (null while the DM decides)
+type Checking = { part: Omit<Part, "text">; check: (Check & { explanation: string }) | null };
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // A story opened by anyone other than its writer is read-only
 type Props = {
@@ -73,18 +91,23 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
   const [heroMode, setHeroMode] = useState<"roll" | "build">("roll");
   const [heroIndex, setHeroIndex] = useState(0);
   const [draft, setDraft] = useState(initialDraft);
-  // The part being written right now
-  const [pending, setPending] = useState<{ connector: Connector; idea: string; text: string } | null>(null);
+  const [d20, setD20] = useState(false);
+  // The part being written right now; a DM part without a roll value is still rolling
+  const [pending, setPending] = useState<Part | null>(null);
+  const [checking, setChecking] = useState<Checking | null>(null);
   const [connector, setConnector] = useState<TurnConnector>(nextConnector(initialTale?.parts.at(-1)?.connector));
   // Ideas for each connector this turn, fetched when the connector is first picked
-  const [ideas, setIdeas] = useState<Partial<Record<TurnConnector, string[]>>>({});
+  const [ideas, setIdeas] = useState<Partial<Record<TurnConnector, Idea[]>>>({});
   const [ideaIndex, setIdeaIndex] = useState(0);
   const [writeIn, setWriteIn] = useState("");
   const [busy, setBusy] = useState(false);
 
   const turnIdeas = ideas[connector];
   const writing = pending !== null;
-  const canTakeTurn = editable && tale && !tale.finished && !writing && tale.parts.length > 0;
+  // A check whose part was written but never rolled for, e.g. after a reload
+  const owedCheck = tale && !writing ? awaitingRoll(tale.parts) : undefined;
+  const canTakeTurn =
+    editable && tale && !tale.finished && !writing && !checking && !owedCheck && tale.parts.length > 0;
 
   useEffect(() => {
     if (!canTakeTurn || turnIdeas) return;
@@ -97,18 +120,18 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     };
   }, [canTakeTurn, tale?.id, connector, turnIdeas]);
 
-  async function writePart(target: Tale, next: Connector, idea = "", ideaSource: Part["ideaSource"] = "none") {
-    setPending({ connector: next, idea, text: "" });
+  async function writePart(target: Tale, part: Omit<Part, "text">) {
+    setPending({ ...part, text: "" });
     const response = await fetch(`/api/tales/${target.id}/parts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ connector: next, idea, ideaSource }),
+      body: JSON.stringify(part),
     });
-    await readPart(response, target, next, idea, ideaSource);
+    return readPart(response, target, part);
   }
 
   // Shows a part as it streams in, then adds it to the story
-  async function readPart(response: Response, target: Tale, next: Connector, idea: string, ideaSource: Part["ideaSource"]) {
+  async function readPart(response: Response, target: Tale, part: Omit<Part, "text">) {
     if (!response.ok || !response.body) {
       setPending(null);
       throw new Error(response.statusText);
@@ -120,17 +143,46 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
       const { done, value } = await reader.read();
       if (done) break;
       text += value;
-      setPending({ connector: next, idea, text });
+      setPending({ ...part, text });
     }
 
-    const part: Part = { connector: next, idea, ideaSource, text: text.trim() };
-    setTale({ ...target, parts: [...target.parts, part], finished: next === "end" });
+    const written: Tale = {
+      ...target,
+      parts: [...target.parts, { ...part, text: text.trim() }],
+      finished: part.connector === "end",
+    };
+    setTale(written);
     setPending(null);
     setIdeas({});
     setIdeaIndex(0);
     setWriteIn("");
-    if (next !== "end") setConnector(nextConnector(next));
-    if (posthogConfigured) posthog.capture("tale_part_written", { connector: next, ideaSource });
+    if (part.connector !== "end") setConnector(nextConnector(part.connector));
+    if (posthogConfigured) {
+      posthog.capture("tale_part_written", {
+        connector: part.connector,
+        ideaSource: part.ideaSource,
+        ...(part.roll ? { roll: part.roll.value } : {}),
+      });
+    }
+    return written;
+  }
+
+  // D20 Mode: the server rolls, and the DM writes the outcome from the roll
+  async function rollFor(target: Tale, check: Check) {
+    // A part with a roll but no value shows a tumbling die
+    setPending({ connector: "but", idea: "", ideaSource: "none", text: "", roll: { value: 0, check } });
+    const [response] = await Promise.all([fetch(`/api/tales/${target.id}/roll`, { method: "POST" }), wait(1200)]);
+    const value = Number(response.headers.get("x-roll"));
+    if (!response.ok || !value) {
+      setPending(null);
+      throw new Error(response.statusText);
+    }
+    await readPart(response, target, {
+      connector: rollConnector(value, check.target),
+      idea: "",
+      ideaSource: "none",
+      roll: { value, check },
+    });
   }
 
   const builtHeroReady = Boolean(draft?.pieces[draft.kind].every((piece) => piece.trim()));
@@ -145,17 +197,17 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
       const response = await fetch("/api/tales", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hero }),
+        body: JSON.stringify({ hero, d20 }),
       });
       const id = response.headers.get("x-tale-id");
       if (!id) throw new Error(response.statusText);
 
-      const created: Tale = { id, hero, parts: [], finished: false, title: null, book: null };
+      const created: Tale = { id, hero, parts: [], finished: false, title: null, book: null, d20 };
       setTale(created);
-      setPending({ connector: "once", idea: "", text: "" });
+      setPending({ connector: "once", idea: "", ideaSource: "none", text: "" });
       window.history.replaceState(null, "", `/write/${id}`);
-      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind, built: heroMode === "build" });
-      await readPart(response, created, "once", "", "none");
+      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind, built: heroMode === "build", d20 });
+      await readPart(response, created, { connector: "once", idea: "", ideaSource: "none" });
     } finally {
       setBusy(false);
     }
@@ -171,16 +223,58 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     }
   }
 
-  function addPart() {
-    if (!tale || !turnIdeas) return;
+  async function addPart() {
+    if (!tale) return;
     const typed = writeIn.trim();
-    const idea = typed || turnIdeas[ideaIndex];
-    void writePart(tale, connector, idea, typed ? "write-in" : "option");
+    const chosen = typed ? null : turnIdeas?.[ideaIndex];
+    if (!typed && !chosen) return;
+    const part: Omit<Part, "text"> = {
+      connector,
+      idea: typed || chosen?.text || "",
+      ideaSource: typed ? "write-in" : "option",
+    };
+
+    // In D20 Mode the DM looks at risky ideas, and anything the writer typed, before it's written
+    if (!tale.d20 || !(typed || chosen?.check)) {
+      await writePart(tale, part);
+      return;
+    }
+    setChecking({ part, check: null });
+    try {
+      const check = await callCheck(tale.id, part.idea, chosen?.check ?? null);
+      if (check) {
+        setChecking({ part, check });
+        return;
+      }
+      setChecking(null);
+      await writePart(tale, part);
+    } catch (error) {
+      setChecking(null);
+      throw error;
+    }
+  }
+
+  // The writer's part stops at the moment of truth; then the roll decides how it goes
+  async function rollTheDice() {
+    if (!tale || !checking?.check) return;
+    const { name, target, reason } = checking.check;
+    const check = { name, target, reason };
+    setChecking(null);
+    const withAttempt = await writePart(tale, { ...checking.part, check });
+    await rollFor(withAttempt, check);
+  }
+
+  async function skipTheRoll() {
+    if (!tale || !checking) return;
+    const { part } = checking;
+    setChecking(null);
+    if (posthogConfigured) posthog.capture("tale_check_skipped");
+    await writePart(tale, part);
   }
 
   async function showDifferentIdeas() {
     if (!tale || !turnIdeas) return;
-    const previous = turnIdeas;
+    const previous = turnIdeas.map((idea) => idea.text);
     setIdeas((all) => ({ ...all, [connector]: undefined }));
     setIdeaIndex(0);
     const options = await suggestIdeas(tale.id, connector, previous);
@@ -267,6 +361,27 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
           </section>
         )}
 
+        <button
+          role="switch"
+          aria-checked={d20}
+          onClick={() => setD20(!d20)}
+          className={clsx(
+            "flex items-center gap-4 rounded-3xl border px-5 py-4 text-left",
+            d20 ? "border-peach bg-peach/10 shadow-[0_0_36px_rgb(255_176_112/0.3)]" : "border-white/20 bg-white/5",
+          )}
+        >
+          <Icon icon={faDiceD20} primary="var(--color-peach)" secondary="var(--color-violet)" className="text-[36px]" />
+          <span className="flex flex-1 flex-col gap-0.5">
+            <span className="text-lg font-semibold">D20 Mode</span>
+            <span className="text-[15px] leading-snug text-muted">
+              Risky ideas need a dice roll, and a Dungeon Master writes what happens.
+            </span>
+          </span>
+          <span className={clsx("flex h-8 w-14 flex-none items-center rounded-full p-1", d20 ? "bg-peach" : "bg-white/20")}>
+            <span className={clsx("size-6 rounded-full bg-white transition-transform", d20 && "translate-x-6")} />
+          </span>
+        </button>
+
         <DragonButton onClick={startStory} disabled={busy || !chosenHero}>
           Start the story
         </DragonButton>
@@ -294,6 +409,8 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
   }
 
   const parts = pending ? [...tale.parts, pending] : tale.parts;
+  // While the DM calls a check, the writer's part waits in the story, not written yet
+  const waiting = checking?.part;
 
   return (
     <>
@@ -302,11 +419,31 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
           {tale.parts.length} {tale.parts.length === 1 ? "part" : "parts"} so far
         </p>
         <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight">{possessive(tale.hero.name)} story</h1>
+        {tale.d20 && (
+          <span className="mt-2 flex min-h-10 items-center gap-2 rounded-full bg-peach/14 pr-3.5 pl-2.5 text-sm font-semibold text-peach shadow-[inset_0_0_0_1px_var(--color-peach)]">
+            <Icon icon={faDiceD20} primary="var(--color-peach)" secondary="var(--color-violet)" className="text-lg" />
+            D20 Mode
+          </span>
+        )}
       </header>
 
       <ol aria-label="Story so far" className="flex flex-col">
         {parts.map((part, index) => {
           const { word, color } = CONNECTORS[part.connector];
+          if (part.roll) {
+            const rolled = part.roll.value || null;
+            return (
+              <li key={index} className="grid grid-cols-[28px_minmax(0,1fr)] gap-4">
+                <span className="flex flex-col items-center">
+                  <span className="mt-2.5 size-3.5 rounded-full" style={{ background: color, boxShadow: `0 0 14px ${color}` }} />
+                  <span className="mt-1 w-0.5 flex-1 bg-white/14" />
+                </span>
+                <div className="pb-6">
+                  <RollCard connector={part.connector} check={part.roll.check} value={rolled} text={part.text} />
+                </div>
+              </li>
+            );
+          }
           return (
             <li key={index} className="grid grid-cols-[28px_minmax(0,1fr)] gap-4">
               <span className="flex flex-col items-center">
@@ -330,7 +467,38 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
             </li>
           );
         })}
+        {waiting && (
+          <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-4 opacity-60">
+            <span className="flex flex-col items-center">
+              <span
+                className="mt-2.5 size-3.5 rounded-full"
+                style={{ background: CONNECTORS[waiting.connector].color }}
+              />
+              <span className="mt-1 w-0.5 flex-1 bg-white/14" />
+            </span>
+            <div className="flex flex-col gap-1.5 pb-6">
+              <span className={clsx(connectorWord, "text-[26px]")} style={{ color: CONNECTORS[waiting.connector].color }}>
+                {CONNECTORS[waiting.connector].word}
+              </span>
+              <p className={clsx("text-[19px] leading-relaxed text-muted", dmVoice)}>
+                Not written yet: the dice decide how it goes.
+              </p>
+              <span className="flex items-center gap-1.5 self-start rounded-full bg-white/6 px-2.5 py-1 text-sm text-muted">
+                <Icon icon={faPencil} primary="var(--color-pink)" secondary="var(--color-sky)" />
+                Your idea: <span className={clsx("text-white", writerVoice)}>{waiting.idea}</span>
+              </span>
+            </div>
+          </li>
+        )}
       </ol>
+
+      {editable && checking && (
+        <CheckPanel check={checking.check} busy={writing} onRoll={() => void rollTheDice()} onSkip={() => void skipTheRoll()} />
+      )}
+
+      {editable && !checking && owedCheck && (
+        <CheckPanel check={owedCheck} busy={writing} onRoll={() => void rollFor(tale, owedCheck)} />
+      )}
 
       {canTakeTurn && (
         <section className={panel}>
@@ -388,7 +556,7 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
                     const on = !writeIn.trim() && index === ideaIndex;
                     return (
                       <button
-                        key={idea}
+                        key={idea.text}
                         role="radio"
                         aria-checked={on}
                         onClick={() => {
@@ -396,11 +564,14 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
                           setWriteIn("");
                         }}
                         className={clsx(
-                          "min-h-14 rounded-[18px] border px-4 py-2 text-left text-[17px]",
+                          "flex min-h-14 items-center justify-between gap-3 rounded-[18px] border px-4 py-2 text-left text-[17px]",
                           on ? "border-pink bg-pink/14" : "border-white/18 bg-white/3",
                         )}
                       >
-                        {idea}
+                        {idea.text}
+                        {tale.d20 && (
+                          <span className="text-[13px] whitespace-nowrap text-peach">{idea.check ?? "No roll"}</span>
+                        )}
                       </button>
                     );
                   })
@@ -436,14 +607,15 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
 
           <footer className="flex flex-wrap items-center justify-between gap-3">
             <button
-              onClick={() => void writePart(tale, "end")}
+              onClick={() => void writePart(tale, { connector: "end", idea: "", ideaSource: "none" })}
               className="flex min-h-12 items-center gap-2 rounded-full border border-white/30 px-4.5 text-[15px] font-semibold"
             >
               <Icon icon={faBookOpen} primary="#fff" secondary="var(--color-sky)" className="text-xl" />
               Write the ending
             </button>
+            {tale.d20 && <span className="text-sm text-muted">Risky ideas get a dice check first.</span>}
             <button
-              onClick={addPart}
+              onClick={() => void addPart()}
               disabled={!turnIdeas && !writeIn.trim()}
               className="flex min-h-14 items-center gap-2.5 rounded-full bg-linear-to-r from-pink via-peach to-pale-sky px-7 text-lg font-bold text-night shadow-[0_0_40px_rgb(255_143_200/0.45)] disabled:opacity-60"
             >
@@ -455,7 +627,9 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
 
       {/* A story whose opening never got saved can start again from here */}
       {editable && tale.parts.length === 0 && !writing && (
-        <DragonButton onClick={() => void writePart(tale, "once")}>Start the story</DragonButton>
+        <DragonButton onClick={() => void writePart(tale, { connector: "once", idea: "", ideaSource: "none" })}>
+          Start the story
+        </DragonButton>
       )}
 
       {!editable && <DragonButton href="/write">Write your own story</DragonButton>}

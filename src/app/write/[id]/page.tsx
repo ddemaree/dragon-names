@@ -28,10 +28,10 @@ export default async function TalePage({ params }: Props) {
   const tale = await getTale((await params).id);
   if (!tale) notFound();
 
-  const { id, hero, parts, finished, title, book } = tale;
+  const { id, hero, parts, finished, title, book, d20 } = tale;
   return (
     <Layout>
-      <Writer initialTale={{ id, hero, parts, finished, title, book }} editable={await canEdit(tale)} />
+      <Writer initialTale={{ id, hero, parts, finished, title, book, d20 }} editable={await canEdit(tale)} />
     </Layout>
   );
 }
