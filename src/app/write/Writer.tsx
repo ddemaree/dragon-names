@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import posthog from "posthog-js";
 import {
   faArrowRotateRight,
@@ -59,11 +60,18 @@ function heroLine(hero: Hero) {
   return hero.kind === "dragons" ? `${withArticle(hero.type)} dragon` : withArticle(hero.type);
 }
 
+// Rolled heroes and "Build my own" are separate tabs
+const HERO_MODES: { mode: "roll" | "build"; label: string; icon: IconDefinition }[] = [
+  { mode: "roll", label: "Roll a hero", icon: faDiceD20 },
+  { mode: "build", label: "Build my own", icon: faPencil },
+];
+
 export default function Writer({ initialHeroes = [], heroWords, initialDraft, initialTale, editable = true }: Props) {
   const [tale, setTale] = useState<Tale | null>(initialTale ?? null);
   const [heroes, setHeroes] = useState(initialHeroes);
-  // A rolled hero, or "own" for the one the writer is building
-  const [heroIndex, setHeroIndex] = useState<number | "own">(0);
+  // Pick a rolled hero, or build one
+  const [heroMode, setHeroMode] = useState<"roll" | "build">("roll");
+  const [heroIndex, setHeroIndex] = useState(0);
   const [draft, setDraft] = useState(initialDraft);
   // The part being written right now
   const [pending, setPending] = useState<{ connector: Connector; idea: string; text: string } | null>(null);
@@ -125,9 +133,8 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     if (posthogConfigured) posthog.capture("tale_part_written", { connector: next, ideaSource });
   }
 
-  const builtHero = heroIndex === "own" && draft ? heroFromDraft(draft) : null;
-  const builtHeroReady = Boolean(builtHero && draft?.pieces[draft.kind].every((piece) => piece.trim()));
-  const chosenHero = heroIndex === "own" ? (builtHeroReady ? builtHero : null) : heroes[heroIndex];
+  const builtHeroReady = Boolean(draft?.pieces[draft.kind].every((piece) => piece.trim()));
+  const chosenHero = heroMode === "build" ? (draft && builtHeroReady ? heroFromDraft(draft) : null) : heroes[heroIndex];
 
   async function startStory() {
     const hero = chosenHero;
@@ -147,7 +154,7 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
       setTale(created);
       setPending({ connector: "once", idea: "", text: "" });
       window.history.replaceState(null, "", `/write/${id}`);
-      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind, built: heroIndex === "own" });
+      if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind, built: heroMode === "build" });
       await readPart(response, created, "once", "", "none");
     } finally {
       setBusy(false);
@@ -190,53 +197,74 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
           <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight sm:text-6xl">
             Who is this story about?
           </h1>
-          <p className={clsx("text-lg text-pink", aiVoice)}>Pick one, roll for new ones, or build your own.</p>
+          <p className={clsx("text-lg text-pink", aiVoice)}>Roll for a hero, or build your own.</p>
         </header>
 
-        <section className="flex flex-col gap-3.5">
-          <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Hero">
-            {heroes.map((hero, index) => {
-              const on = index === heroIndex;
+        {heroWords && draft && (
+          <div
+            role="tablist"
+            aria-label="Hero"
+            className="flex gap-1 self-center rounded-full bg-white/8 p-1 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)]"
+          >
+            {HERO_MODES.map(({ mode, label, icon }) => {
+              const on = mode === heroMode;
               return (
                 <button
-                  key={`${hero.kind}-${hero.name}`}
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setHeroIndex(index)}
-                  className={clsx(
-                    "flex flex-col items-start gap-3 rounded-3xl border p-5 text-left",
-                    on
-                      ? "border-pink bg-pink/14 shadow-[0_0_36px_rgb(255_143_200/0.35)]"
-                      : "border-white/20 bg-white/5",
-                  )}
+                  key={mode}
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setHeroMode(mode)}
+                  className={clsx("flex min-h-11 items-center gap-2 rounded-full px-5 text-[15px] font-semibold", on && "bg-ink text-night")}
                 >
-                  <Icon icon={KIND_ICONS[hero.kind]} primary="var(--color-pink)" secondary="var(--color-sky)" className="text-[44px]" />
-                  <span className={clsx(connectorWord, "text-[28px]")}>{hero.name}</span>
-                  <span className="text-[15px] leading-snug text-muted">{heroLine(hero)}</span>
+                  <Icon
+                    icon={icon}
+                    primary={on ? "var(--color-deep-violet)" : "var(--color-peach)"}
+                    secondary="var(--color-sky)"
+                    className="text-lg"
+                  />
+                  {label}
                 </button>
               );
             })}
           </div>
-          <button
-            onClick={reroll}
-            disabled={busy}
-            className="flex min-h-12 items-center gap-2.5 self-center rounded-full border border-white/30 bg-white/6 px-5 font-semibold"
-          >
-            <Icon icon={faDiceD20} primary="var(--color-peach)" secondary="var(--color-sky)" className="text-[22px]" />
-            Roll 3 new heroes
-          </button>
-        </section>
+        )}
 
-        {heroWords && draft && (
-          <HeroBuilder
-            words={heroWords}
-            draft={draft}
-            selected={heroIndex === "own"}
-            onChange={(next) => {
-              setDraft(next);
-              setHeroIndex("own");
-            }}
-          />
+        {heroMode === "build" && heroWords && draft ? (
+          <HeroBuilder words={heroWords} draft={draft} onChange={setDraft} />
+        ) : (
+          <section className="flex flex-col gap-3.5">
+            <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Hero">
+              {heroes.map((hero, index) => {
+                const on = index === heroIndex;
+                return (
+                  <button
+                    key={`${hero.kind}-${hero.name}`}
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setHeroIndex(index)}
+                    className={clsx(
+                      "flex flex-col items-start gap-3 rounded-3xl border p-5 text-left",
+                      on
+                        ? "border-pink bg-pink/14 shadow-[0_0_36px_rgb(255_143_200/0.35)]"
+                        : "border-white/20 bg-white/5",
+                    )}
+                  >
+                    <Icon icon={KIND_ICONS[hero.kind]} primary="var(--color-pink)" secondary="var(--color-sky)" className="text-[44px]" />
+                    <span className={clsx(connectorWord, "text-[28px]")}>{hero.name}</span>
+                    <span className="text-[15px] leading-snug text-muted">{heroLine(hero)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={reroll}
+              disabled={busy}
+              className="flex min-h-12 items-center gap-2.5 self-center rounded-full border border-white/30 bg-white/6 px-5 font-semibold"
+            >
+              <Icon icon={faDiceD20} primary="var(--color-peach)" secondary="var(--color-sky)" className="text-[22px]" />
+              Roll 3 new heroes
+            </button>
+          </section>
         )}
 
         <DragonButton onClick={startStory} disabled={busy || !chosenHero}>

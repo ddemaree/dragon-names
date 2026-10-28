@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { faArrowRotateRight, faPencil } from "@fortawesome/pro-duotone-svg-icons";
+import { faArrowRotateRight } from "@fortawesome/pro-duotone-svg-icons";
 import Icon from "@/components/Icon";
 import { CHARACTER_KINDS, isCharacterKind } from "@/lib/characters";
 import {
@@ -19,8 +19,6 @@ import { KIND_ICONS } from "@/lib/icons";
 type Props = {
   words: HeroWords;
   draft: Draft;
-  selected: boolean;
-  // Any change also picks the built hero
   onChange: (draft: Draft) => void;
 };
 
@@ -29,7 +27,7 @@ const piece = "rounded-[16px] border border-white/28 bg-night/60 text-white";
 // The writer's own words use Polymath's legibility forms
 const writerVoice = "[font-feature-settings:'ss01']";
 
-export default function HeroBuilder({ words, draft, selected, onChange }: Props) {
+export default function HeroBuilder({ words, draft, onChange }: Props) {
   const { kind } = draft;
   const copy = BUILDER_COPY[kind];
 
@@ -44,20 +42,7 @@ export default function HeroBuilder({ words, draft, selected, onChange }: Props)
   }
 
   return (
-    <section
-      className={clsx(
-        "flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-7 sm:px-8",
-        selected ? "shadow-[inset_0_0_0_1px_var(--color-pink)]" : "shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)]",
-      )}
-    >
-      <button
-        onClick={() => onChange(draft)}
-        aria-pressed={selected}
-        className="flex items-center gap-2.5 self-start text-lg font-semibold"
-      >
-        <Icon icon={faPencil} primary="var(--color-pink)" secondary="var(--color-peach)" className="text-2xl" />
-        Build my own hero
-      </button>
+    <section className="flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-7 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)] sm:px-8">
 
       <div role="radiogroup" aria-label="Kind" className="flex flex-wrap gap-2">
         {KINDS.map((id) => {
