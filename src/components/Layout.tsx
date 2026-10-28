@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { faDragon } from "@fortawesome/pro-duotone-svg-icons";
+import Footer from "./Footer";
 import Icon from "./Icon";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -11,6 +12,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </Link>
 
         {children}
+
+        <Footer />
       </main>
     </div>
   );

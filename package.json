@@ -12,6 +12,7 @@
     "@posthog/ai": "^8.17.0",
     "@supabase/supabase-js": "^2.118.0",
     "ai": "^7.0.154",
+    "bitsandletters-logo": "^0.1.2",
     "clsx": "^2.1.1",
     "micromark": "^4.0.3",
     "next": "^16.4.3",
