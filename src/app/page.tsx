@@ -78,6 +78,13 @@ export default function HomePage() {
     }
   }
 
+  // Back to the form, keeping the reader's last choices
+  function startOver() {
+    setCharacter(null);
+    setStory("");
+    window.history.replaceState(null, "", "/");
+  }
+
   return (
     <Layout>
       {!character && (
@@ -101,8 +108,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {!working && (
-        <div className={character ? "mt-10 border-t border-pink-500 py-8" : undefined}>
+      {!working && character && (
+        <div className="mt-10 border-t border-pink-500 py-8">
+          <DragonButton onClick={startOver}>Make me another story</DragonButton>
+        </div>
+      )}
+
+      {!working && !character && (
+        <div>
           <div className="mb-6 flex flex-wrap justify-center gap-2" role="radiogroup">
             {Object.entries(CHARACTER_KINDS).map(([id, { label }]) => (
               <button
