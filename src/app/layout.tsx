@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Spectral, Spectral_SC } from "next/font/google";
-import FathomAnalytics from "@/components/Fathom";
 import "./globals.css";
 
 const spectral = Spectral({
@@ -30,10 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${spectral.variable} ${spectralSC.variable} ${inter.variable}`}
     >
-      <body>
-        <FathomAnalytics />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

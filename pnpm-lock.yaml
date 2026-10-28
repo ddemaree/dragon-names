@@ -196,9 +196,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      fathom-client:
-        specifier: ^3.7.2
-        version: 3.7.2
       micromark:
         specifier: ^4.0.3
         version: 4.0.3
@@ -1148,9 +1145,6 @@ packages:
   eventsource-parser@3.1.1:
     resolution: {integrity: sha512-EKN1vKAMcZ8MlYMpaNuxN6R9yakzH6uajHcHVTqWJzvu5pWw9DyhbP35HH8MVBQ+dZjAfDxk+A8NiR9KWaXiyQ==}
     engines: {node: '>=18.0.0'}
-
-  fathom-client@3.7.2:
-    resolution: {integrity: sha512-sWtaNivhg7uwp/q1bUuIiNj4LeQZMEZ5NXXFFpZ8le4uDedAfQG84gPOdYehtVXbl+1yX2s8lmXZ2+IQ9a/xxA==}
 
   fflate@0.4.9:
     resolution: {integrity: sha512-zdxgIEddhfsyCaWpJ2SdXEP8ZMrKJ6+5jl4OupODcywU0IhRk6gdXuVGcPICyfx2H97hVK7xmJtRLPjkxAX8Vw==}
@@ -2276,8 +2270,6 @@ snapshots:
   escalade@3.2.0: {}
 
   eventsource-parser@3.1.1: {}
-
-  fathom-client@3.7.2: {}
 
   fflate@0.4.9: {}
 
