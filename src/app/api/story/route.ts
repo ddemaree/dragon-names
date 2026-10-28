@@ -14,9 +14,8 @@ export async function POST(request: Request) {
     model: "anthropic/claude-haiku-5.5",
     instructions: INSTRUCTIONS,
     prompt: buildPrompt(subject, options),
-    // Otherwise the model can spend the whole token budget thinking and write nothing
+    // Short stories don't need it, and it slows down the first words
     reasoning: "none",
-    maxOutputTokens: 600,
     runtimeContext: { sessionId: id },
     telemetry: {
       functionId: `story-${options.kind}`,
