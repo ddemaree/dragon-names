@@ -1,0 +1,7 @@
+warrior
+apprentice
+medicine cat
+deputy
+kit
+elder
+medicine cat apprentice

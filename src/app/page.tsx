@@ -2,41 +2,49 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import clsx from "clsx";
 import { micromark } from "micromark";
 import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import DragonButton from "@/components/DragonButton";
-import DragonName from "@/components/DragonName";
+import CharacterCard from "@/components/CharacterCard";
+import { CHARACTER_KINDS, type CharacterKind, isCharacterKind } from "@/lib/characters";
 
 // Lottie touches `document` on import, so keep it out of the server render
 const ImaginingAnimation = dynamic(() => import("@/components/ImaginingAnimation"), {
   ssr: false,
 });
 
-type Dragon = { name: string; type: string };
+type Character = { kind: CharacterKind; name: string; type: string };
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
 
 export default function HomePage() {
+  const [kind, setKind] = useState<CharacterKind>("dragons");
   const [working, setWorking] = useState(false);
-  const [dragon, setDragon] = useState<Dragon | null>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
   const [story, setStory] = useState("");
 
-  async function makeDragon() {
-    if (posthogConfigured) posthog.capture("dragon_generation_requested");
+  async function makeStory() {
+    if (posthogConfigured) posthog.capture("dragon_generation_requested", { kind });
     setWorking(true);
-    setDragon(null);
+    setCharacter(null);
     setStory("");
 
     try {
-      const response = await fetch("/api/story", { method: "POST" });
+      const response = await fetch("/api/story", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kind }),
+      });
       if (!response.ok || !response.body) throw new Error(response.statusText);
 
-      setDragon({
-        name: decodeURIComponent(response.headers.get("x-dragon-name") ?? ""),
-        type: decodeURIComponent(response.headers.get("x-dragon-type") ?? ""),
+      setCharacter({
+        kind,
+        name: decodeURIComponent(response.headers.get("x-character-name") ?? ""),
+        type: decodeURIComponent(response.headers.get("x-character-type") ?? ""),
       });
 
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
@@ -49,9 +57,9 @@ export default function HomePage() {
       // The story is saved once the stream ends; make the URL its permalink
       window.history.replaceState(null, "", `/stories/${response.headers.get("x-story-id")}`);
 
-      if (posthogConfigured) posthog.capture("dragon_generation_completed");
+      if (posthogConfigured) posthog.capture("dragon_generation_completed", { kind });
     } catch (error) {
-      if (posthogConfigured) posthog.capture("dragon_generation_failed");
+      if (posthogConfigured) posthog.capture("dragon_generation_failed", { kind });
       throw error;
     } finally {
       setWorking(false);
@@ -60,11 +68,11 @@ export default function HomePage() {
 
   return (
     <Layout>
-      {!dragon && (
+      {!character && (
         <h1 className="text-2xl font-semibold mb-4">June's Dragon Generator</h1>
       )}
 
-      {dragon && <DragonName name={dragon.name} dragonType={dragon.type} />}
+      {character && <CharacterCard {...character} />}
 
       {story && (
         <div
@@ -82,10 +90,25 @@ export default function HomePage() {
       )}
 
       {!working && (
-        <div className={dragon ? "mt-10 border-t border-pink-500 py-8" : undefined}>
-          <DragonButton onClick={makeDragon}>
-            {dragon ? "Make me another dragon" : "Make me a dragon"}
-          </DragonButton>
+        <div className={character ? "mt-10 border-t border-pink-500 py-8" : undefined}>
+          <div className="mb-6 flex flex-wrap justify-center gap-2" role="radiogroup">
+            {Object.entries(CHARACTER_KINDS).map(([id, { label }]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={kind === id}
+                onClick={() => isCharacterKind(id) && setKind(id)}
+                className={clsx(
+                  "px-3 py-1 border border-pink-600",
+                  kind === id ? "bg-pink-600 text-white" : "text-pink-600",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <DragonButton onClick={makeStory}>{CHARACTER_KINDS[kind].button}</DragonButton>
         </div>
       )}
     </Layout>

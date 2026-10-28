@@ -1,0 +1,16 @@
+tiefling
+elf
+human
+dwarf
+halfling
+gnome
+dragonborn
+half-orc
+goliath
+aasimar
+tabaxi
+githyanki
+dalek
+klingon
+grad student
+french bulldog

@@ -1,0 +1,8 @@
+MarshClan
+ReedClan
+MistClan
+StoneClan
+MeadowClan
+PineClan
+FrostClan
+BrambleClan

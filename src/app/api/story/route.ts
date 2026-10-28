@@ -1,22 +1,26 @@
 import { createTextStreamResponse, streamText, toTextStream } from "ai";
 import { after } from "next/server";
-import { makeDragon } from "@/lib/names";
+import { isCharacterKind } from "@/lib/characters";
+import { makeCharacter } from "@/lib/names";
 import { createServerClient } from "@/lib/supabase";
 import { flushTelemetry } from "@/lib/telemetry";
 
-export async function POST() {
-  const { name, type } = await makeDragon();
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const kind = isCharacterKind(body?.kind) ? body.kind : "dragons";
+
+  const { name, type, prompt } = await makeCharacter(kind);
   const id = crypto.randomUUID();
 
   const result = streamText({
     model: "anthropic/claude-haiku-5.5",
     instructions:
-      "You write short, cheerful stories for young children. Use simple Markdown paragraphs with no headings.",
-    prompt: `Write a cute, brief story about a ${type} dragon named ${name}.`,
+      "You write short, cheerful stories for readers around 10 to 13 years old. Use Markdown paragraphs with no headings.",
+    prompt,
     maxOutputTokens: 600,
     runtimeContext: { sessionId: id },
     telemetry: {
-      functionId: "dragon-story",
+      functionId: `story-${kind}`,
       includeRuntimeContext: { sessionId: true },
     },
   });
@@ -27,7 +31,7 @@ export async function POST() {
       const story = await result.text;
       const { error } = await createServerClient()
         .from("stories")
-        .insert({ id, name, type, story });
+        .insert({ id, name, type, story, options: { kind } });
       if (error) console.error("Failed to save story", error);
     } finally {
       await flushTelemetry();
@@ -38,8 +42,8 @@ export async function POST() {
     stream: toTextStream({ stream: result.stream }),
     headers: {
       "x-story-id": id,
-      "x-dragon-name": encodeURIComponent(name),
-      "x-dragon-type": encodeURIComponent(type),
+      "x-character-name": encodeURIComponent(name),
+      "x-character-type": encodeURIComponent(type),
     },
   });
 }
