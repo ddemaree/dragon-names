@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const id = crypto.randomUUID();
 
   const result = streamText({
-    model: "anthropic/claude-haiku-5.5",
+    model: options.model,
     instructions: INSTRUCTIONS,
     prompt: buildPrompt(subject, options),
     // Short stories don't need it, and it slows down the first words

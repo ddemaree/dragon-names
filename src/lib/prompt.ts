@@ -7,6 +7,7 @@ import {
   type SliderId,
   type StoryOptions,
 } from "./characters";
+import { DEFAULT_MODEL, isModelId } from "./models";
 
 export const INSTRUCTIONS =
   "You write short stories for readers around 10 to 13 years old. Keep everything age-appropriate. Use Markdown paragraphs with no headings.";
@@ -77,9 +78,12 @@ export function parseStoryOptions(body: unknown): StoryOptions {
 
   const slider = (id: SliderId) => sliderValue(Reflect.get(input, id), DEFAULT_SLIDERS[id]);
 
+  const model = "model" in input && isModelId(input.model) ? input.model : DEFAULT_MODEL;
+
   return {
     kind,
     setting,
+    model,
     scary: slider("scary"),
     serious: slider("serious"),
     romance: slider("romance"),

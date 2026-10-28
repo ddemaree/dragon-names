@@ -16,6 +16,7 @@ import {
   isSliderId,
   SLIDERS,
 } from "@/lib/characters";
+import { DEFAULT_MODEL, isModelId, MODELS, type ModelId } from "@/lib/models";
 
 // Lottie touches `document` on import, so keep it out of the server render
 const ImaginingAnimation = dynamic(() => import("@/components/ImaginingAnimation"), {
@@ -33,12 +34,13 @@ export default function HomePage() {
   // An empty setting means "surprise me"
   const [setting, setSetting] = useState("");
   const [sliders, setSliders] = useState(DEFAULT_SLIDERS);
+  const [model, setModel] = useState<ModelId>(DEFAULT_MODEL);
   const [working, setWorking] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
   const [story, setStory] = useState("");
 
   async function makeStory() {
-    if (posthogConfigured) posthog.capture("dragon_generation_requested", { kind });
+    if (posthogConfigured) posthog.capture("dragon_generation_requested", { kind, model });
     setWorking(true);
     setCharacter(null);
     setStory("");
@@ -47,7 +49,7 @@ export default function HomePage() {
       const response = await fetch("/api/story", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind, setting: setting || null, ...sliders }),
+        body: JSON.stringify({ kind, setting: setting || null, model, ...sliders }),
       });
       if (!response.ok || !response.body) throw new Error(response.statusText);
 
@@ -67,9 +69,9 @@ export default function HomePage() {
       // The story is saved once the stream ends; make the URL its permalink
       window.history.replaceState(null, "", `/stories/${response.headers.get("x-story-id")}`);
 
-      if (posthogConfigured) posthog.capture("dragon_generation_completed", { kind });
+      if (posthogConfigured) posthog.capture("dragon_generation_completed", { kind, model });
     } catch (error) {
-      if (posthogConfigured) posthog.capture("dragon_generation_failed", { kind });
+      if (posthogConfigured) posthog.capture("dragon_generation_failed", { kind, model });
       throw error;
     } finally {
       setWorking(false);
@@ -160,6 +162,24 @@ export default function HomePage() {
                 />
               </label>
             ))}
+
+            <details>
+              <summary className="cursor-pointer text-neutral-500">Advanced options</summary>
+              <label className="mt-2 flex flex-col gap-1">
+                Model
+                <select
+                  value={model}
+                  onChange={(event) => isModelId(event.target.value) && setModel(event.target.value)}
+                  className="border border-pink-600 p-2"
+                >
+                  {Object.entries(MODELS).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </details>
           </div>
 
           <DragonButton onClick={makeStory}>{CHARACTER_KINDS[kind].button}</DragonButton>

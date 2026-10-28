@@ -1,6 +1,8 @@
 // Shared between client and server: which kinds of characters a story can be about,
 // and the options a reader can set
 
+import type { ModelId } from "./models";
+
 export const CHARACTER_KINDS = {
   dragons: {
     label: "Dragon",
@@ -82,6 +84,7 @@ export type StoryOptions = {
   kind: CharacterKind;
   // null means "surprise me"
   setting: string | null;
+  model: ModelId;
 } & Record<SliderId, number>;
 
 export const DEFAULT_SLIDERS: Record<SliderId, number> = {
