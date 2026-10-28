@@ -40,8 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const story = await getStory((await params).storyId);
   return {
     title: story
-      ? `The story of ${story.name}, from June's Dragon Generator`
-      : "June's Dragon Generator",
+      ? `The story of ${story.name}, from Dragon Generator`
+      : "Dragon Generator",
   };
 }
 

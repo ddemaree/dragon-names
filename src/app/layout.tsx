@@ -25,7 +25,7 @@ const polymath = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "June's Dragon Generator",
+  title: "Dragon Generator",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

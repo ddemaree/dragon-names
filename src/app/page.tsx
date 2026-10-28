@@ -125,7 +125,7 @@ export default function HomePage() {
         <>
           <header className="-mt-4 flex flex-col items-center gap-3.5 text-center">
             <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight sm:text-7xl">
-              June’s Dragon Generator
+              Dragon Generator
             </h1>
             <p className="text-lg text-muted">Pick a hero, a place and a mood. We’ll write the story.</p>
           </header>
