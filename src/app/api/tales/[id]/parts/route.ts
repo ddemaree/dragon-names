@@ -1,8 +1,5 @@
-import { createTextStreamResponse, streamText, toTextStream } from "ai";
-import { createServerClient } from "@/lib/supabase";
 import { type Connector, isTurnConnector, type Part } from "@/lib/tale";
-import { cleanIdea, getTale, partPrompt, TALE_INSTRUCTIONS } from "@/lib/tales";
-import { flushTelemetry } from "@/lib/telemetry";
+import { cleanIdea, getTale, streamPart } from "@/lib/tales";
 import { canEdit } from "@/lib/writer";
 
 // Writes the next part of a storytelling-mode story and appends it once it's done
@@ -29,38 +26,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? "write-in"
       : "option";
 
-  const result = streamText({
-    model: tale.model,
-    instructions: TALE_INSTRUCTIONS,
-    prompt: partPrompt(tale, connector, idea),
-    reasoning: "none",
-    runtimeContext: { sessionId: tale.id },
-    telemetry: { functionId: `tale-part-${connector}`, includeRuntimeContext: { sessionId: true } },
-  });
-
-  // Save before the response ends, so the next turn's ideas already see this part
-  const save = new TransformStream<string, string>({
-    async flush() {
-      try {
-        const text = (await result.text).trim();
-        if (!text) return;
-        const { error } = await createServerClient()
-          .from("tales")
-          .update({
-            parts: [...tale.parts, { connector, idea, ideaSource, text }],
-            finished: connector === "end",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", tale.id);
-        if (error) console.error("Failed to save story part", error);
-      } finally {
-        await flushTelemetry();
-      }
-    },
-  });
-
-  return createTextStreamResponse({
-    stream: toTextStream({ stream: result.stream }).pipeThrough(save),
-    headers: { "x-part-connector": connector },
-  });
+  return streamPart(tale, connector, idea, ideaSource);
 }

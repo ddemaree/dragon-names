@@ -2,33 +2,13 @@
 
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { DEFAULT_MODEL } from "@/lib/models";
-import { createServerClient } from "@/lib/supabase";
-import { type Hero, isHero, isTurnConnector } from "@/lib/tale";
+import { isTurnConnector } from "@/lib/tale";
 import { cleanIdea, getTale, ideasPrompt, rollHeroes, TALE_INSTRUCTIONS } from "@/lib/tales";
 import { flushTelemetry } from "@/lib/telemetry";
-import { canEdit, ensureWriterId } from "@/lib/writer";
+import { canEdit } from "@/lib/writer";
 
 export async function rollHeroesAction() {
   return rollHeroes();
-}
-
-// Starts a story about the chosen hero; the opening part is written by the parts route
-export async function createTale(hero: Hero) {
-  if (!isHero(hero)) throw new Error("Invalid hero");
-
-  const { data, error } = await createServerClient()
-    .from("tales")
-    .insert({
-      // Rolled heroes come from the browser, so they're capped like any other writer text
-      hero: { kind: hero.kind, name: cleanIdea(hero.name, 60), type: cleanIdea(hero.type, 300) },
-      model: DEFAULT_MODEL,
-      writer: await ensureWriterId(),
-    })
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data.id;
 }
 
 // Exactly three ideas for the next part, so every turn looks the same

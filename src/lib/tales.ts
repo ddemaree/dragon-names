@@ -1,9 +1,11 @@
 import "server-only";
+import { createTextStreamResponse, streamText, toTextStream } from "ai";
 import { cache } from "react";
 import { CHARACTER_KINDS, isCharacterKind, withArticle } from "./characters";
 import { makeCharacter } from "./names";
 import { GENRES } from "./prompt";
 import { createServerClient } from "./supabase";
+import { flushTelemetry } from "./telemetry";
 import { CONNECTORS, type Connector, type Hero, isHero, MAX_IDEA_LENGTH, type Part, readParts } from "./tale";
 
 export const getTale = cache(async (id: string) => {
@@ -96,4 +98,48 @@ export function ideasPrompt(tale: Pick<Tale, "hero" | "parts">, connector: keyof
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+// Streams the next part to the browser and saves it before the response ends,
+// so the next turn's ideas already see it
+export function streamPart(
+  tale: Pick<Tale, "id" | "hero" | "parts" | "model">,
+  connector: Connector,
+  idea: string,
+  ideaSource: Part["ideaSource"],
+  headers: Record<string, string> = {},
+) {
+  const result = streamText({
+    model: tale.model,
+    instructions: TALE_INSTRUCTIONS,
+    prompt: partPrompt(tale, connector, idea),
+    reasoning: "none",
+    runtimeContext: { sessionId: tale.id },
+    telemetry: { functionId: `tale-part-${connector}`, includeRuntimeContext: { sessionId: true } },
+  });
+
+  const save = new TransformStream<string, string>({
+    async flush() {
+      try {
+        const text = (await result.text).trim();
+        if (!text) return;
+        const { error } = await createServerClient()
+          .from("tales")
+          .update({
+            parts: [...tale.parts, { connector, idea, ideaSource, text }],
+            finished: connector === "end",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", tale.id);
+        if (error) console.error("Failed to save story part", error);
+      } finally {
+        await flushTelemetry();
+      }
+    },
+  });
+
+  return createTextStreamResponse({
+    stream: toTextStream({ stream: result.stream }).pipeThrough(save),
+    headers,
+  });
 }

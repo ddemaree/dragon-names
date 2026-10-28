@@ -24,7 +24,7 @@ import {
   TURN_CONNECTORS,
   type TurnConnector,
 } from "@/lib/tale";
-import { createTale, rollHeroesAction, suggestIdeas } from "./actions";
+import { rollHeroesAction, suggestIdeas } from "./actions";
 
 type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean };
 
@@ -84,6 +84,11 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ connector: next, idea, ideaSource }),
     });
+    await readPart(response, target, next, idea, ideaSource);
+  }
+
+  // Shows a part as it streams in, then adds it to the story
+  async function readPart(response: Response, target: Tale, next: Connector, idea: string, ideaSource: Part["ideaSource"]) {
     if (!response.ok || !response.body) {
       setPending(null);
       throw new Error(response.statusText);
@@ -113,12 +118,21 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
     if (!hero) return;
     setBusy(true);
     try {
-      const id = await createTale(hero);
+      // One request creates the story and streams its opening
+      const response = await fetch("/api/tales", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hero }),
+      });
+      const id = response.headers.get("x-tale-id");
+      if (!id) throw new Error(response.statusText);
+
       const created: Tale = { id, hero, parts: [], finished: false };
       setTale(created);
+      setPending({ connector: "once", idea: "", text: "" });
       window.history.replaceState(null, "", `/write/${id}`);
       if (posthogConfigured) posthog.capture("tale_started", { kind: hero.kind });
-      await writePart(created, "once");
+      await readPart(response, created, "once", "", "none");
     } finally {
       setBusy(false);
     }
