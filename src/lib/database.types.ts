@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      tales: {
+        Row: {
+          created_at: string
+          finished: boolean
+          hero: Json
+          id: string
+          model: string
+          parts: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          finished?: boolean
+          hero: Json
+          id?: string
+          model: string
+          parts?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          finished?: boolean
+          hero?: Json
+          id?: string
+          model?: string
+          parts?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

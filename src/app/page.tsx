@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import clsx from "clsx";
 import { micromark } from "micromark";
 import posthog from "posthog-js";
@@ -128,6 +129,9 @@ export default function HomePage() {
               Dragon Generator
             </h1>
             <p className="text-lg text-muted">Pick a hero, a place and a mood. We’ll write the story.</p>
+            <Link href="/write" className="text-pink underline decoration-pink/40 underline-offset-4 hover:text-white">
+              Or write your own story, one part at a time
+            </Link>
           </header>
 
           <div className="flex flex-wrap justify-center gap-5" role="radiogroup" aria-label="Character">

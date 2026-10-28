@@ -14,7 +14,7 @@ export const INSTRUCTIONS =
 
 // Describes each genre without naming the books that inspired it, so stories
 // don't borrow those books' characters and places
-const GENRES: Record<CharacterKind, string> = {
+export const GENRES: Record<CharacterKind, string> = {
   dragons:
     "a dragon adventure in a world where dragons live in tribes with their own kingdoms, rivalries, and secrets",
   "warrior-cats":
