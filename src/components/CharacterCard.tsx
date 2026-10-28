@@ -14,9 +14,9 @@ export default function CharacterCard({ kind, name, type }: Props) {
   return (
     <div className="border-t border-b border-pink-500 mb-8 p-4">
       <p>{nameLabel}</p>
-      <p className="mt-3 text-xl font-spectral-sc">{name}</p>
+      <p className="mt-3 font-display text-3xl font-semibold">{name}</p>
       <p className="my-3">{typeLabel}</p>
-      <p className="mt-3 text-xl font-spectral-sc">{typeText}</p>
+      <p className="mt-3 text-xl [font-variant-caps:all-small-caps] tracking-wide">{typeText}</p>
     </div>
   );
 }

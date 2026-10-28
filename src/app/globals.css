@@ -2,7 +2,6 @@
 
 /* Font files are loaded by next/font in layout.tsx */
 @theme inline {
-  --font-spectral: var(--next-font-spectral);
-  --font-spectral-sc: var(--next-font-spectral-sc);
-  --font-sans: var(--next-font-inter), Arial, sans-serif;
+  --font-display: var(--next-font-roslindale), Georgia, serif;
+  --font-sans: var(--next-font-polymath), Arial, sans-serif;
 }

@@ -81,7 +81,7 @@ export default function HomePage() {
   return (
     <Layout>
       {!character && (
-        <h1 className="text-2xl font-semibold mb-4">June's Dragon Generator</h1>
+        <h1 className="font-display text-4xl font-bold mb-6">June's Dragon Generator</h1>
       )}
 
       {character && <CharacterCard {...character} />}
@@ -125,7 +125,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="mb-8 flex flex-col gap-4 text-left font-sans text-sm">
+          <div className="mb-8 flex flex-col gap-4 text-left text-sm">
             <label className="flex flex-col gap-1">
               Setting
               <select
