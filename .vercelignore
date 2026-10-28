@@ -1,0 +1,2 @@
+# Licensed fonts are downloaded from Blob storage during the build
+src/fonts/licensed/
