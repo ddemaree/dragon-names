@@ -75,3 +75,9 @@ export function readParts(value: unknown): Part[] {
 export function nextConnector(previous: Connector | undefined): TurnConnector {
   return previous === "but" ? "so" : "but";
 }
+
+// A streamed book puts its title on the first line
+export function splitBook(text: string) {
+  const [first = "", ...rest] = text.trim().split("\n");
+  return { title: first.replace(/^#+\s*/, "").replace(/^["“]|["”]$/g, "").trim(), book: rest.join("\n").trim() };
+}

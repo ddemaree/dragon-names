@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/story": ["./data/**/*"],
     "/stories/[storyId]/opengraph-image": ["./src/fonts/licensed/RoslindaleV2-DisplayLight.ttf"],
+    "/write/[id]/opengraph-image": ["./src/fonts/licensed/RoslindaleV2-DisplayLight.ttf"],
   },
 };
 

@@ -43,32 +43,38 @@ export type Database = {
       }
       tales: {
         Row: {
+          book: string | null
           created_at: string
           finished: boolean
           hero: Json
           id: string
           model: string
           parts: Json
+          title: string | null
           updated_at: string
           writer: string | null
         }
         Insert: {
+          book?: string | null
           created_at?: string
           finished?: boolean
           hero: Json
           id?: string
           model: string
           parts?: Json
+          title?: string | null
           updated_at?: string
           writer?: string | null
         }
         Update: {
+          book?: string | null
           created_at?: string
           finished?: boolean
           hero?: Json
           id?: string
           model?: string
           parts?: Json
+          title?: string | null
           updated_at?: string
           writer?: string | null
         }

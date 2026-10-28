@@ -28,3 +28,10 @@ export function readOptions(options: Json) {
     sliders,
   };
 }
+
+// The story's opening, as plain text short enough for a link preview
+export function excerpt(markdown: string, maxLength = 200) {
+  const text = markdown.replace(/[*_#>`]/g, "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, text.lastIndexOf(" ", maxLength))}…`;
+}

@@ -12,7 +12,7 @@ import {
 } from "@fortawesome/pro-duotone-svg-icons";
 import DragonButton from "@/components/DragonButton";
 import Icon from "@/components/Icon";
-import { withArticle } from "@/lib/characters";
+import { possessive, withArticle } from "@/lib/characters";
 import { KIND_ICONS } from "@/lib/icons";
 import {
   CONNECTORS,
@@ -24,9 +24,10 @@ import {
   TURN_CONNECTORS,
   type TurnConnector,
 } from "@/lib/tale";
-import { rollHeroesAction, suggestIdeas } from "./actions";
+import { keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
+import FinishedBook from "./FinishedBook";
 
-type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean };
+type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean; title: string | null; book: string | null };
 
 // A story opened by anyone other than its writer is read-only
 type Props = { initialHeroes?: Hero[]; initialTale?: Tale; editable?: boolean };
@@ -127,7 +128,7 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
       const id = response.headers.get("x-tale-id");
       if (!id) throw new Error(response.statusText);
 
-      const created: Tale = { id, hero, parts: [], finished: false };
+      const created: Tale = { id, hero, parts: [], finished: false, title: null, book: null };
       setTale(created);
       setPending({ connector: "once", idea: "", text: "" });
       window.history.replaceState(null, "", `/write/${id}`);
@@ -218,6 +219,25 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
     );
   }
 
+  if (tale.finished && !pending) {
+    return (
+      <FinishedBook
+        id={tale.id}
+        heroName={tale.hero.name}
+        parts={tale.parts}
+        title={tale.title}
+        book={tale.book}
+        editable={editable}
+        onKeepGoing={async () => {
+          const parts = await keepGoing(tale.id);
+          setTale({ ...tale, parts, finished: false, title: null, book: null });
+          setConnector(nextConnector(parts.at(-1)?.connector));
+          setIdeas({});
+        }}
+      />
+    );
+  }
+
   const parts = pending ? [...tale.parts, pending] : tale.parts;
 
   return (
@@ -226,7 +246,7 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
         <p className="text-sm font-semibold tracking-widest text-pink [font-variant-caps:all-small-caps]">
           {tale.parts.length} {tale.parts.length === 1 ? "part" : "parts"} so far
         </p>
-        <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight">{tale.hero.name}’s story</h1>
+        <h1 className="font-display text-5xl leading-[0.95] font-light tracking-tight">{possessive(tale.hero.name)} story</h1>
       </header>
 
       <ol aria-label="Story so far" className="flex flex-col">
@@ -383,9 +403,7 @@ export default function Writer({ initialHeroes = [], initialTale, editable = tru
         <DragonButton onClick={() => void writePart(tale, "once")}>Start the story</DragonButton>
       )}
 
-      {(tale.finished || !editable) && (
-        <DragonButton href="/write">{editable ? "Start a new story" : "Write your own story"}</DragonButton>
-      )}
+      {!editable && <DragonButton href="/write">Write your own story</DragonButton>}
     </>
   );
 }

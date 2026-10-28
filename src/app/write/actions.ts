@@ -2,6 +2,7 @@
 
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { createServerClient } from "@/lib/supabase";
 import { isTurnConnector } from "@/lib/tale";
 import { cleanIdea, getTale, ideasPrompt, rollHeroes, TALE_INSTRUCTIONS } from "@/lib/tales";
 import { flushTelemetry } from "@/lib/telemetry";
@@ -32,4 +33,18 @@ export async function suggestIdeas(taleId: string, connector: string, avoid: str
   } finally {
     await flushTelemetry();
   }
+}
+
+// Reopens a finished story: drops the ending and the book made from it, so the writer can add more
+export async function keepGoing(taleId: string) {
+  const tale = await getTale(taleId);
+  if (!tale || !tale.finished || !(await canEdit(tale))) throw new Error("Can't reopen this story");
+
+  const parts = tale.parts.at(-1)?.connector === "end" ? tale.parts.slice(0, -1) : tale.parts;
+  const { error } = await createServerClient()
+    .from("tales")
+    .update({ parts, finished: false, title: null, book: null, updated_at: new Date().toISOString() })
+    .eq("id", tale.id);
+  if (error) throw error;
+  return parts;
 }

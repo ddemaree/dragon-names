@@ -97,3 +97,8 @@ export const DEFAULT_SLIDERS: Record<SliderId, number> = {
 export function withArticle(phrase: string) {
   return `${/^[aeiou]/i.test(phrase) ? "an" : "a"} ${phrase}`;
 }
+
+// "Sparkclaw’s", but "The Brave Acorns’"
+export function possessive(name: string) {
+  return name.endsWith("s") ? `${name}’` : `${name}’s`;
+}

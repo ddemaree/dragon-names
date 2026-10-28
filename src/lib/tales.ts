@@ -11,7 +11,7 @@ import { CONNECTORS, type Connector, type Hero, isHero, MAX_IDEA_LENGTH, type Pa
 export const getTale = cache(async (id: string) => {
   const { data } = await createServerClient()
     .from("tales")
-    .select("id, hero, parts, finished, model, writer")
+    .select("id, hero, parts, finished, model, writer, title, book")
     .eq("id", id)
     .maybeSingle();
   if (!data || !isHero(data.hero)) return null;
@@ -142,4 +142,15 @@ export function streamPart(
     stream: toTextStream({ stream: result.stream }).pipeThrough(save),
     headers,
   });
+}
+
+// "Make it a book": the same parts joined into one polished story, with a title on the first line
+export function bookPrompt(tale: Pick<Tale, "hero" | "parts">) {
+  return [
+    `Genre: ${GENRES[tale.hero.kind]}.`,
+    heroLine(tale.hero),
+    `Here are the parts of a story the writer built with you, each labelled with how it connects to the one before:\n\n${storySoFar(tale.parts)}`,
+    "Join the parts into one polished story. Keep every event, character and idea, in the same order, and add nothing important. Smooth the transitions, drop the labels, and vary the sentences so it reads like a chapter from a book. Use 4 to 8 paragraphs.",
+    "On the first line, write only a short title for the story, with no quotation marks or other formatting. Then a blank line, then the story as Markdown paragraphs with no headings.",
+  ].join("\n\n");
 }

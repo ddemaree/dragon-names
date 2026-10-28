@@ -4,16 +4,9 @@ import { micromark } from "micromark";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
 import Layout from "@/components/Layout";
-import { getStory, readOptions } from "@/lib/stories";
+import { excerpt, getStory, readOptions } from "@/lib/stories";
 
 type Props = { params: Promise<{ storyId: string }> };
-
-// The story's opening, as plain text short enough for a link preview
-function excerpt(markdown: string, maxLength = 200) {
-  const text = markdown.replace(/[*_#>`]/g, "").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, text.lastIndexOf(" ", maxLength))}…`;
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { storyId } = await params;
