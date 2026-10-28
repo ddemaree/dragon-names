@@ -23,7 +23,7 @@ export default function Footer() {
       <bnl-logo variant="small-lockup" theme="on-dark">
         A project by Bits&amp;Letters
       </bnl-logo>
-      <p>Made for June by David Demaree. Stories are written by AI.</p>
+      <p>Made by <a href="https://demaree.me">David Demaree</a>. Stories are written by AI.</p>
     </footer>
   );
 }
