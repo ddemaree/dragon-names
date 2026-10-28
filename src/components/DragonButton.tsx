@@ -1,7 +1,14 @@
 import clsx from "clsx";
 import Link from "next/link";
 
-export default function DragonButton({ children, disabled, onClick, href }) {
+type Props = {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick?: () => void;
+  href?: string;
+};
+
+export default function DragonButton({ children, disabled, onClick, href }: Props) {
   const defaultClasses = "font-bold p-3 text-center min-w-[220px]";
   const classNames = clsx([
     defaultClasses,
@@ -11,14 +18,14 @@ export default function DragonButton({ children, disabled, onClick, href }) {
 
   if (href) {
     return (
-      <Link href={href}>
-        <a className={classNames}>{children}</a>
+      <Link href={href} className={classNames}>
+        {children}
       </Link>
     );
   }
 
   return (
-    <button onClick={onClick} className={classNames}>
+    <button onClick={onClick} disabled={disabled} className={classNames}>
       {children}
     </button>
   );

@@ -1,4 +1,9 @@
-export default function DragonName({ name, dragonType }) {
+type Props = {
+  name: string;
+  dragonType: string;
+};
+
+export default function DragonName({ name, dragonType }: Props) {
   return (
     <div className="border-t border-b border-pink-500 mb-8 p-4">
       <p>Your dragon's name is:</p>

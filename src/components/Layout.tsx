@@ -2,7 +2,12 @@ import clsx from "clsx";
 import Link from "next/link";
 import DragonIcon from "./DragonIcon";
 
-export default function Layout({ children, width = "normal" }) {
+type Props = {
+  children: React.ReactNode;
+  width?: "normal" | "wide";
+};
+
+export default function Layout({ children, width = "normal" }: Props) {
   const innerClassNames = clsx([
     "bg-white p-8 w-full",
     width === "normal" && "max-w-xl",
@@ -13,9 +18,7 @@ export default function Layout({ children, width = "normal" }) {
     <div className="text-center bg-pink-300 min-h-screen flex flex-col items-center justify-center font-spectral">
       <div className={innerClassNames}>
         <Link href="/">
-          <a>
-            <DragonIcon />
-          </a>
+          <DragonIcon />
         </Link>
 
         {children}
