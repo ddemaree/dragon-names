@@ -50,6 +50,7 @@ export type Database = {
           model: string
           parts: Json
           updated_at: string
+          writer: string | null
         }
         Insert: {
           created_at?: string
@@ -59,6 +60,7 @@ export type Database = {
           model: string
           parts?: Json
           updated_at?: string
+          writer?: string | null
         }
         Update: {
           created_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           model?: string
           parts?: Json
           updated_at?: string
+          writer?: string | null
         }
         Relationships: []
       }

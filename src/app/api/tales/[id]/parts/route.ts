@@ -3,11 +3,14 @@ import { createServerClient } from "@/lib/supabase";
 import { type Connector, isTurnConnector, type Part } from "@/lib/tale";
 import { cleanIdea, getTale, partPrompt, TALE_INSTRUCTIONS } from "@/lib/tales";
 import { flushTelemetry } from "@/lib/telemetry";
+import { canEdit } from "@/lib/writer";
 
 // Writes the next part of a storytelling-mode story and appends it once it's done
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const tale = await getTale((await params).id);
   if (!tale || tale.finished) return new Response("Story not found", { status: 404 });
+  // Shared links are read-only; only the browser that started the story can continue it
+  if (!(await canEdit(tale))) return new Response("Only the writer can add to this story", { status: 403 });
 
   const body: unknown = await request.json().catch(() => null);
   const input = body && typeof body === "object" ? body : {};

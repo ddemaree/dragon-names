@@ -9,7 +9,7 @@ import { CONNECTORS, type Connector, type Hero, isHero, MAX_IDEA_LENGTH, type Pa
 export const getTale = cache(async (id: string) => {
   const { data } = await createServerClient()
     .from("tales")
-    .select("id, hero, parts, finished, model")
+    .select("id, hero, parts, finished, model, writer")
     .eq("id", id)
     .maybeSingle();
   if (!data || !isHero(data.hero)) return null;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Layout from "@/components/Layout";
 import { getTale } from "@/lib/tales";
+import { canEdit } from "@/lib/writer";
 import Writer from "../Writer";
 
 type Props = { params: Promise<{ id: string }> };
@@ -18,7 +19,7 @@ export default async function TalePage({ params }: Props) {
   const { id, hero, parts, finished } = tale;
   return (
     <Layout>
-      <Writer initialTale={{ id, hero, parts, finished }} />
+      <Writer initialTale={{ id, hero, parts, finished }} editable={await canEdit(tale)} />
     </Layout>
   );
 }

@@ -28,7 +28,8 @@ import { createTale, rollHeroesAction, suggestIdeas } from "./actions";
 
 type Tale = { id: string; hero: Hero; parts: Part[]; finished: boolean };
 
-type Props = { initialHeroes?: Hero[]; initialTale?: Tale };
+// A story opened by anyone other than its writer is read-only
+type Props = { initialHeroes?: Hero[]; initialTale?: Tale; editable?: boolean };
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -48,7 +49,7 @@ function heroLine(hero: Hero) {
   return hero.kind === "dragons" ? `${withArticle(hero.type)} dragon` : withArticle(hero.type);
 }
 
-export default function Writer({ initialHeroes = [], initialTale }: Props) {
+export default function Writer({ initialHeroes = [], initialTale, editable = true }: Props) {
   const [tale, setTale] = useState<Tale | null>(initialTale ?? null);
   const [heroes, setHeroes] = useState(initialHeroes);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -63,7 +64,7 @@ export default function Writer({ initialHeroes = [], initialTale }: Props) {
 
   const turnIdeas = ideas[connector];
   const writing = pending !== null;
-  const canTakeTurn = tale && !tale.finished && !writing && tale.parts.length > 0;
+  const canTakeTurn = editable && tale && !tale.finished && !writing && tale.parts.length > 0;
 
   useEffect(() => {
     if (!canTakeTurn || turnIdeas) return;
@@ -364,11 +365,13 @@ export default function Writer({ initialHeroes = [], initialTale }: Props) {
       )}
 
       {/* A story whose opening never got saved can start again from here */}
-      {tale.parts.length === 0 && !writing && (
+      {editable && tale.parts.length === 0 && !writing && (
         <DragonButton onClick={() => void writePart(tale, "once")}>Start the story</DragonButton>
       )}
 
-      {tale.finished && <DragonButton href="/write">Start a new story</DragonButton>}
+      {(tale.finished || !editable) && (
+        <DragonButton href="/write">{editable ? "Start a new story" : "Write your own story"}</DragonButton>
+      )}
     </>
   );
 }

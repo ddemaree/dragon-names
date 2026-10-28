@@ -7,6 +7,7 @@ import { createServerClient } from "@/lib/supabase";
 import { type Hero, isHero, isTurnConnector } from "@/lib/tale";
 import { cleanIdea, getTale, ideasPrompt, rollHeroes, TALE_INSTRUCTIONS } from "@/lib/tales";
 import { flushTelemetry } from "@/lib/telemetry";
+import { canEdit, ensureWriterId } from "@/lib/writer";
 
 export async function rollHeroesAction() {
   return rollHeroes();
@@ -22,6 +23,7 @@ export async function createTale(hero: Hero) {
       // Rolled heroes come from the browser, so they're capped like any other writer text
       hero: { kind: hero.kind, name: cleanIdea(hero.name, 60), type: cleanIdea(hero.type, 300) },
       model: DEFAULT_MODEL,
+      writer: await ensureWriterId(),
     })
     .select("id")
     .single();
@@ -32,7 +34,9 @@ export async function createTale(hero: Hero) {
 // Exactly three ideas for the next part, so every turn looks the same
 export async function suggestIdeas(taleId: string, connector: string, avoid: string[] = []) {
   const tale = await getTale(taleId);
-  if (!tale || tale.finished || !isTurnConnector(connector)) throw new Error("Can't suggest ideas here");
+  if (!tale || tale.finished || !isTurnConnector(connector) || !(await canEdit(tale))) {
+    throw new Error("Can't suggest ideas here");
+  }
 
   try {
     const { output } = await generateText({
