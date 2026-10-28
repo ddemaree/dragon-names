@@ -5,7 +5,7 @@ import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { get } from "@vercel/blob";
 
-const FONTS = ["RoslindaleVariableV2-VF.woff2", "PolymathVar.woff2"];
+const FONTS = ["RoslindaleVariableV2-VF.woff2", "PolymathVar.woff2", "RoslindaleV2-DisplayLight.ttf"];
 const outDir = path.join(import.meta.dirname, "../src/fonts/licensed");
 
 if (!process.env.BLOB_READ_WRITE_TOKEN) {

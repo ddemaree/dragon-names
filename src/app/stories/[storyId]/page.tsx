@@ -1,40 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cache } from "react";
 import { micromark } from "micromark";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
 import Layout from "@/components/Layout";
-import type { Json } from "@/lib/database.types";
-import { type CharacterKind, isCharacterKind, isSliderId, type SliderId } from "@/lib/characters";
-import { createServerClient } from "@/lib/supabase";
+import { getStory, readOptions } from "@/lib/stories";
 
 type Props = { params: Promise<{ storyId: string }> };
-
-const getStory = cache(async (id: string) => {
-  const { data } = await createServerClient()
-    .from("stories")
-    .select("name, type, story, options")
-    .eq("id", id)
-    .maybeSingle();
-  return data;
-});
-
-// Stories saved before character kinds existed have no `kind`; they're dragons
-function readOptions(options: Json) {
-  const kind: CharacterKind = "dragons";
-  if (!options || typeof options !== "object" || Array.isArray(options)) return { kind };
-
-  const sliders: Partial<Record<SliderId, number>> = {};
-  for (const [id, value] of Object.entries(options)) {
-    if (isSliderId(id) && typeof value === "number") sliders[id] = value;
-  }
-  return {
-    kind: isCharacterKind(options.kind) ? options.kind : kind,
-    setting: typeof options.setting === "string" ? options.setting : undefined,
-    sliders,
-  };
-}
 
 // The story's opening, as plain text short enough for a link preview
 function excerpt(markdown: string, maxLength = 200) {
