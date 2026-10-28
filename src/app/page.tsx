@@ -8,7 +8,14 @@ import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
-import { CHARACTER_KINDS, type CharacterKind, isCharacterKind } from "@/lib/characters";
+import {
+  CHARACTER_KINDS,
+  type CharacterKind,
+  DEFAULT_SLIDERS,
+  isCharacterKind,
+  isSliderId,
+  SLIDERS,
+} from "@/lib/characters";
 
 // Lottie touches `document` on import, so keep it out of the server render
 const ImaginingAnimation = dynamic(() => import("@/components/ImaginingAnimation"), {
@@ -23,6 +30,9 @@ const posthogConfigured = Boolean(
 
 export default function HomePage() {
   const [kind, setKind] = useState<CharacterKind>("dragons");
+  // An empty setting means "surprise me"
+  const [setting, setSetting] = useState("");
+  const [sliders, setSliders] = useState(DEFAULT_SLIDERS);
   const [working, setWorking] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
   const [story, setStory] = useState("");
@@ -37,7 +47,7 @@ export default function HomePage() {
       const response = await fetch("/api/story", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind }),
+        body: JSON.stringify({ kind, setting: setting || null, ...sliders }),
       });
       if (!response.ok || !response.body) throw new Error(response.statusText);
 
@@ -97,7 +107,12 @@ export default function HomePage() {
                 key={id}
                 role="radio"
                 aria-checked={kind === id}
-                onClick={() => isCharacterKind(id) && setKind(id)}
+                onClick={() => {
+                  if (!isCharacterKind(id)) return;
+                  setKind(id);
+                  // Settings differ per character, so go back to "surprise me"
+                  setSetting("");
+                }}
                 className={clsx(
                   "px-3 py-1 border border-pink-600",
                   kind === id ? "bg-pink-600 text-white" : "text-pink-600",
@@ -105,6 +120,45 @@ export default function HomePage() {
               >
                 {label}
               </button>
+            ))}
+          </div>
+
+          <div className="mb-8 flex flex-col gap-4 text-left font-sans text-sm">
+            <label className="flex flex-col gap-1">
+              Setting
+              <select
+                value={setting}
+                onChange={(event) => setSetting(event.target.value)}
+                className="border border-pink-600 p-2"
+              >
+                <option value="">Surprise me</option>
+                {CHARACTER_KINDS[kind].settings.map((option) => (
+                  <option key={option} value={option}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {Object.entries(SLIDERS).map(([id, { min, max }]) => (
+              <label key={id} className="flex flex-col gap-1">
+                <span className="flex justify-between">
+                  <span>{min}</span>
+                  <span>{max}</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={isSliderId(id) ? sliders[id] : 0}
+                  onChange={(event) => {
+                    if (!isSliderId(id)) return;
+                    const value = Number(event.target.value);
+                    setSliders((current) => ({ ...current, [id]: value }));
+                  }}
+                  className="accent-pink-600"
+                />
+              </label>
             ))}
           </div>
 

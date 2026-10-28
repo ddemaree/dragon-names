@@ -1,26 +1,25 @@
 import { createTextStreamResponse, streamText, toTextStream } from "ai";
 import { after } from "next/server";
-import { isCharacterKind } from "@/lib/characters";
 import { makeCharacter } from "@/lib/names";
+import { buildPrompt, INSTRUCTIONS, parseStoryOptions } from "@/lib/prompt";
 import { createServerClient } from "@/lib/supabase";
 import { flushTelemetry } from "@/lib/telemetry";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
-  const kind = isCharacterKind(body?.kind) ? body.kind : "dragons";
-
-  const { name, type, prompt } = await makeCharacter(kind);
+  const options = parseStoryOptions(await request.json().catch(() => null));
+  const { name, type, subject } = await makeCharacter(options.kind);
   const id = crypto.randomUUID();
 
   const result = streamText({
     model: "anthropic/claude-haiku-5.5",
-    instructions:
-      "You write short, cheerful stories for readers around 10 to 13 years old. Use Markdown paragraphs with no headings.",
-    prompt,
+    instructions: INSTRUCTIONS,
+    prompt: buildPrompt(subject, options),
+    // Otherwise the model can spend the whole token budget thinking and write nothing
+    reasoning: "none",
     maxOutputTokens: 600,
     runtimeContext: { sessionId: id },
     telemetry: {
-      functionId: `story-${kind}`,
+      functionId: `story-${options.kind}`,
       includeRuntimeContext: { sessionId: true },
     },
   });
@@ -29,9 +28,13 @@ export async function POST(request: Request) {
   after(async () => {
     try {
       const story = await result.text;
+      if (!story.trim()) {
+        console.error("Story generation returned no text", await result.finishReason);
+        return;
+      }
       const { error } = await createServerClient()
         .from("stories")
-        .insert({ id, name, type, story, options: { kind } });
+        .insert({ id, name, type, story, options });
       if (error) console.error("Failed to save story", error);
     } finally {
       await flushTelemetry();

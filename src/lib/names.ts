@@ -7,7 +7,8 @@ export type Character = {
   name: string;
   // Shown under the name and stored in `stories.type`
   type: string;
-  prompt: string;
+  // Who the story is about, e.g. "a Swiftwing dragon named Glitterclaw"
+  subject: string;
 };
 
 function capitalize(word: string) {
@@ -50,7 +51,7 @@ async function makeDragon(): Promise<Character> {
   return {
     name,
     type,
-    prompt: `Write a cute, brief story about a ${type} dragon named ${name}.`,
+    subject: `a ${type} dragon named ${name}`,
   };
 }
 
@@ -65,7 +66,7 @@ async function makeWarriorCat(): Promise<Character> {
   return {
     name,
     type,
-    prompt: `Write a cute, brief story about ${name}, ${withArticle(type)}, a clan of wild cats who live in the forest.`,
+    subject: `${name}, ${withArticle(type)}`,
   };
 }
 
@@ -76,7 +77,7 @@ async function makeTeen(): Promise<Character> {
   return {
     name,
     type,
-    prompt: `Write a fun, brief story about ${name}, a teenager who is ${withArticle(type)}.`,
+    subject: `${name}, a teenager who is ${withArticle(type)}`,
   };
 }
 
@@ -92,7 +93,7 @@ async function makeParty(): Promise<Character> {
   return {
     name,
     type,
-    prompt: `Write a fun, brief fantasy adventure about a party of adventurers called ${name}: ${type}.`,
+    subject: `a party of adventurers called ${name}: ${type}`,
   };
 }
 
