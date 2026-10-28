@@ -1,0 +1,46 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { cache } from "react";
+import { micromark } from "micromark";
+import DragonButton from "@/components/DragonButton";
+import DragonName from "@/components/DragonName";
+import Layout from "@/components/Layout";
+import { createServerClient } from "@/lib/supabase";
+
+type Props = { params: Promise<{ storyId: string }> };
+
+const getStory = cache(async (id: string) => {
+  const { data } = await createServerClient()
+    .from("stories")
+    .select("name, type, story")
+    .eq("id", id)
+    .maybeSingle();
+  return data;
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const story = await getStory((await params).storyId);
+  return {
+    title: story
+      ? `The story of ${story.name}, from June's Dragon Generator`
+      : "June's Dragon Generator",
+  };
+}
+
+export default async function StoryPage({ params }: Props) {
+  const story = await getStory((await params).storyId);
+  if (!story) notFound();
+
+  return (
+    <Layout>
+      <DragonName name={story.name} dragonType={story.type} />
+      <div
+        className="text-left text-lg [&>*+*]:mt-6"
+        dangerouslySetInnerHTML={{ __html: micromark(story.story) }}
+      />
+      <div className="mt-10 border-t border-pink-500 py-8">
+        <DragonButton href="/">Make me another dragon</DragonButton>
+      </div>
+    </Layout>
+  );
+}

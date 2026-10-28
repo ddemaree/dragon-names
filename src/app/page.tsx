@@ -46,6 +46,9 @@ export default function HomePage() {
         setStory((text) => text + value);
       }
 
+      // The story is saved once the stream ends; make the URL its permalink
+      window.history.replaceState(null, "", `/stories/${response.headers.get("x-story-id")}`);
+
       if (posthogConfigured) posthog.capture("dragon_generation_completed");
     } catch (error) {
       if (posthogConfigured) posthog.capture("dragon_generation_failed");
