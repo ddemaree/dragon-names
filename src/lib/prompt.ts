@@ -10,7 +10,7 @@ import {
 import { DEFAULT_MODEL, isModelId } from "./models";
 
 export const INSTRUCTIONS =
-  "You write short stories for readers around 10 to 13 years old. Keep everything age-appropriate. Use Markdown paragraphs with no headings.";
+  "You write short stories for readers around 10 to 13 years old. Keep everything age-appropriate. Invent original names for any other characters, clans, tribes, kingdoms, and places; don't borrow names from existing books, games, or films, apart from the setting you're given. Use Markdown paragraphs with no headings.";
 
 // Describes each genre without naming the books that inspired it, so stories
 // don't borrow those books' characters and places

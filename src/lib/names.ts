@@ -60,13 +60,14 @@ async function makeWarriorCat(): Promise<Character> {
     pick(await getData("warrior-cats", "prefixes")) +
     pick(await getData("warrior-cats", "suffixes"));
   const role = pick(await getData("warrior-cats", "roles"));
-  const clan = pick(await getData("warrior-cats", "clans"));
+  const [clan, ...rivals] = pickMany(await getData("warrior-cats", "clans"), 3);
   const type = `${role} of ${clan}`;
 
   return {
     name,
     type,
-    subject: `${name}, ${withArticle(type)}`,
+    // Naming the neighboring clans keeps the model from borrowing clans from the books
+    subject: `${name}, ${withArticle(type)} (neighboring clans: ${rivals.join(" and ")})`,
   };
 }
 
