@@ -2,8 +2,9 @@ import "server-only";
 import { experimental_decide } from "ai";
 import { flushTelemetry } from "./telemetry";
 
-// P(the text is a request aimed at the AI). 0.8 is the boolean cutoff in the
-// AI SDK docs. It was not measured against this app's labelled examples.
+// P(the text is a request aimed at the AI). On the labelled set Jev scored
+// direct requests at 0.97–0.99 and story ideas at 0.07–0.28. 0.8 sits in
+// that gap, nearer the requests, so a story idea has to read like one.
 export const ENFORCEMENT_THRESHOLD = 0.8;
 
 export function dispatchesDragon(probability: number) {
