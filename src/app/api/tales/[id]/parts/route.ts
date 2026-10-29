@@ -1,3 +1,5 @@
+import { dispatchesDragon, enforcementResponse, offTopicProbability } from "@/lib/enforcement";
+import { GENRES } from "@/lib/prompt";
 import { awaitingRoll, type Connector, isTurnConnector, type Part } from "@/lib/tale";
 import { cleanCheck, cleanIdea, getTale, streamPart } from "@/lib/tales";
 import { canEdit } from "@/lib/writer";
@@ -30,6 +32,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   // D20 Mode: a risky idea's part stops before we find out whether it works
   const check = tale.d20 && idea && isTurnConnector(connector) ? cleanCheck(Reflect.get(input, "check")) : null;
+
+  // Picked ideas skip this. A hit returns before anything is streamed or saved.
+  if (ideaSource === "write-in") {
+    const probability = await offTopicProbability({
+      genre: GENRES[tale.hero.kind],
+      hero: tale.hero.name,
+      writerText: idea,
+      sessionId: tale.id,
+    });
+    if (dispatchesDragon(probability)) return enforcementResponse(probability);
+  }
 
   return streamPart(tale, { connector, idea, ideaSource, ...(check ? { check } : {}) });
 }

@@ -8,8 +8,10 @@ import {
   faArrowRotateRight,
   faBookOpen,
   faDiceD20,
+  faDragon,
   faLightbulb,
   faPencil,
+  faSirenOn,
 } from "@fortawesome/pro-duotone-svg-icons";
 import DragonButton from "@/components/DragonButton";
 import Icon from "@/components/Icon";
@@ -29,7 +31,7 @@ import {
   TURN_CONNECTORS,
   type TurnConnector,
 } from "@/lib/tale";
-import { callCheck, keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
+import { callCheck, enforcementCheck, keepGoing, rollHeroesAction, suggestIdeas } from "./actions";
 import { CheckPanel, dmVoice, RollCard } from "./DiceCheck";
 import FinishedBook from "./FinishedBook";
 import HeroBuilder from "./HeroBuilder";
@@ -63,6 +65,15 @@ type Props = {
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
 );
+
+// 418 or x-dragon means an enforcement dragon was dispatched and nothing was saved
+async function readEnforcement(response: Response) {
+  if (response.status !== 418 && response.headers.get("x-dragon") !== "enforcement") return null;
+  const body: unknown = await response.json().catch(() => null);
+  const probability: unknown = body && typeof body === "object" ? Reflect.get(body, "probability") : null;
+  if (typeof probability !== "number") throw new Error(response.statusText);
+  return probability;
+}
 
 const panel =
   "flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-7 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)] sm:px-8";
@@ -101,6 +112,8 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
   const [ideaIndex, setIdeaIndex] = useState(0);
   const [writeIn, setWriteIn] = useState("");
   const [busy, setBusy] = useState(false);
+  // Probability from the enforcement check, while its takeover is up
+  const [dragon, setDragon] = useState<number | null>(null);
 
   const turnIdeas = ideas[connector];
   const writing = pending !== null;
@@ -120,6 +133,20 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     };
   }, [canTakeTurn, tale?.id, connector, turnIdeas]);
 
+  function showDragon(probability: number) {
+    setPending(null);
+    setChecking(null);
+    setDragon(probability);
+    if (posthogConfigured) posthog.capture("enforcement_dragon_dispatched", { probability });
+  }
+
+  // Leaves the story as it was. The write-in, or hero details when the story never started, is cleared.
+  function dismissDragon() {
+    setDragon(null);
+    setWriteIn("");
+    if (!tale && draft) setDraft({ ...draft, details: "" });
+  }
+
   async function writePart(target: Tale, part: Omit<Part, "text">) {
     setPending({ ...part, text: "" });
     const response = await fetch(`/api/tales/${target.id}/parts`, {
@@ -127,6 +154,14 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
       headers: { "content-type": "application/json" },
       body: JSON.stringify(part),
     });
+    const probability = await readEnforcement(response).catch((error) => {
+      setPending(null);
+      throw error;
+    });
+    if (probability !== null) {
+      showDragon(probability);
+      return null;
+    }
     return readPart(response, target, part);
   }
 
@@ -199,6 +234,11 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ hero, d20 }),
       });
+      const probability = await readEnforcement(response);
+      if (probability !== null) {
+        showDragon(probability);
+        return;
+      }
       const id = response.headers.get("x-tale-id");
       if (!id) throw new Error(response.statusText);
 
@@ -234,6 +274,20 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
       ideaSource: typed ? "write-in" : "option",
     };
 
+    // D20 Mode would send a write-in to the story model. An off-topic request stops before that.
+    if (typed && tale.d20) {
+      setBusy(true);
+      try {
+        const screen = await enforcementCheck(tale.id, part.idea);
+        if (screen.dispatch) {
+          showDragon(screen.probability);
+          return;
+        }
+      } finally {
+        setBusy(false);
+      }
+    }
+
     // In D20 Mode the DM looks at risky ideas, and anything the writer typed, before it's written
     if (!tale.d20 || !(typed || chosen?.check)) {
       await writePart(tale, part);
@@ -261,6 +315,7 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     const check = { name, target, reason };
     setChecking(null);
     const withAttempt = await writePart(tale, { ...checking.part, check });
+    if (!withAttempt) return;
     await rollFor(withAttempt, check);
   }
 
@@ -279,6 +334,37 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     setIdeaIndex(0);
     const options = await suggestIdeas(tale.id, connector, previous);
     setIdeas((all) => ({ ...all, [connector]: options }));
+  }
+
+  if (dragon !== null) {
+    return (
+      <section role="alert" className={clsx(panel, "items-center text-center")}>
+        <span className="flex items-end justify-center gap-5">
+          <Icon
+            icon={faSirenOn}
+            primary="var(--color-hot-pink)"
+            secondary="var(--color-peach)"
+            className="animate-pulse text-5xl"
+          />
+          <Icon icon={faDragon} primary="var(--color-hot-pink)" secondary="var(--color-sky)" className="text-7xl" />
+        </span>
+        <h2 className="font-display text-4xl leading-[0.95] font-light tracking-tight sm:text-5xl">
+          This session has been flagged.
+        </h2>
+        <p className={clsx("text-lg text-pink", aiVoice)}>
+          An enforcement dragon has been dispatched to your location.
+        </p>
+        <button
+          onClick={dismissDragon}
+          className={clsx(
+            "flex min-h-14 items-center rounded-full px-7 text-lg font-bold text-night",
+            "bg-linear-to-r from-pink via-peach to-pale-sky shadow-[0_0_40px_rgb(255_143_200/0.45)]",
+          )}
+        >
+          {tale ? "Return to your story" : "Back to your hero"}
+        </button>
+      </section>
+    );
   }
 
   if (!tale) {
@@ -616,7 +702,7 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
             {tale.d20 && <span className="text-sm text-muted">Risky ideas get a dice check first.</span>}
             <button
               onClick={() => void addPart()}
-              disabled={!turnIdeas && !writeIn.trim()}
+              disabled={busy || (!turnIdeas && !writeIn.trim())}
               className="flex min-h-14 items-center gap-2.5 rounded-full bg-linear-to-r from-pink via-peach to-pale-sky px-7 text-lg font-bold text-night shadow-[0_0_40px_rgb(255_143_200/0.45)] disabled:opacity-60"
             >
               Write the next part
