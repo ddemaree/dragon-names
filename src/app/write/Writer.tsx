@@ -15,9 +15,11 @@ import {
 } from "@fortawesome/pro-duotone-svg-icons";
 import DragonButton from "@/components/DragonButton";
 import Icon from "@/components/Icon";
+import ReadAloudToggle from "@/components/ReadAloudToggle";
 import { possessive, withArticle } from "@/lib/characters";
 import { type Draft, heroFromDraft, type HeroWords } from "@/lib/hero-draft";
 import { KIND_ICONS } from "@/lib/icons";
+import { useReadAloud } from "@/lib/read-aloud";
 import {
   awaitingRoll,
   type Check,
@@ -114,6 +116,7 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
   const [busy, setBusy] = useState(false);
   // Probability from the enforcement check, while its takeover is up
   const [dragon, setDragon] = useState<number | null>(null);
+  const readAloud = useReadAloud();
 
   const turnIdeas = ideas[connector];
   const writing = pending !== null;
@@ -173,13 +176,16 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
     }
 
     let text = "";
+    readAloud.begin();
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       text += value;
       setPending({ ...part, text });
+      readAloud.feed(text);
     }
+    readAloud.finish(text);
 
     const written: Tale = {
       ...target,
@@ -468,6 +474,8 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
           </span>
         </button>
 
+        {readAloud.available && <ReadAloudToggle on={readAloud.on} onToggle={readAloud.toggle} />}
+
         <DragonButton onClick={startStory} disabled={busy || !chosenHero}>
           Start the story
         </DragonButton>
@@ -512,6 +520,8 @@ export default function Writer({ initialHeroes = [], heroWords, initialDraft, in
           </span>
         )}
       </header>
+
+      {editable && readAloud.available && <ReadAloudToggle on={readAloud.on} onToggle={readAloud.toggle} />}
 
       <ol aria-label="Story so far" className="flex flex-col">
         {parts.map((part, index) => {
