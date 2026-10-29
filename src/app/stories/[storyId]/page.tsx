@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { micromark } from "micromark";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
+import Audiobook from "@/components/Audiobook";
 import Layout from "@/components/Layout";
 import { excerpt, getStory, readOptions } from "@/lib/stories";
 
@@ -30,7 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function StoryPage({ params }: Props) {
-  const story = await getStory((await params).storyId);
+  const { storyId } = await params;
+  const story = await getStory(storyId);
   if (!story) notFound();
 
   return (
@@ -40,6 +42,7 @@ export default async function StoryPage({ params }: Props) {
         className="flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-8 text-[19px] leading-relaxed text-ink-soft shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)] sm:px-11 sm:py-10"
         dangerouslySetInnerHTML={{ __html: micromark(story.story) }}
       />
+      <Audiobook src={`/api/stories/${storyId}/audiobook`} kind="story" />
       <DragonButton href="/">Make me another story</DragonButton>
     </Layout>
   );

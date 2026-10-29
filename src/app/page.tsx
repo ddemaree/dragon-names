@@ -10,8 +10,8 @@ import { faDragon, faSparkles } from "@fortawesome/pro-duotone-svg-icons";
 import Layout from "@/components/Layout";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
+import Audiobook from "@/components/Audiobook";
 import Icon from "@/components/Icon";
-import ReadAloudToggle from "@/components/ReadAloudToggle";
 import {
   CHARACTER_KINDS,
   type CharacterKind,
@@ -22,14 +22,13 @@ import {
 } from "@/lib/characters";
 import { KIND_ICONS, settingIcon, SLIDER_ICONS } from "@/lib/icons";
 import { DEFAULT_MODEL, isModelId, MODELS, type ModelId } from "@/lib/models";
-import { useReadAloud } from "@/lib/read-aloud";
 
 // Lottie touches `document` on import, so keep it out of the server render
 const ImaginingAnimation = dynamic(() => import("@/components/ImaginingAnimation"), {
   ssr: false,
 });
 
-type Character = { kind: CharacterKind; name: string; type: string; setting: string };
+type Character = { id: string; kind: CharacterKind; name: string; type: string; setting: string };
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -47,14 +46,12 @@ export default function HomePage() {
   const [working, setWorking] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
   const [story, setStory] = useState("");
-  const readAloud = useReadAloud();
 
   async function makeStory() {
     if (posthogConfigured) posthog.capture("dragon_generation_requested", { kind, model });
     setWorking(true);
     setCharacter(null);
     setStory("");
-    readAloud.stop();
 
     try {
       const response = await fetch("/api/story", {
@@ -65,22 +62,19 @@ export default function HomePage() {
       if (!response.ok || !response.body) throw new Error(response.statusText);
 
       setCharacter({
+        id: response.headers.get("x-story-id") ?? "",
         kind,
         name: decodeURIComponent(response.headers.get("x-character-name") ?? ""),
         type: decodeURIComponent(response.headers.get("x-character-type") ?? ""),
         setting: decodeURIComponent(response.headers.get("x-story-setting") ?? ""),
       });
 
-      let text = "";
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        text += value;
-        setStory(text);
-        readAloud.feed(text);
+        setStory((text) => text + value);
       }
-      readAloud.finish(text);
 
       // The story is saved once the stream ends; make the URL its permalink
       window.history.replaceState(null, "", `/stories/${response.headers.get("x-story-id")}`);
@@ -98,7 +92,6 @@ export default function HomePage() {
   function startOver() {
     setCharacter(null);
     setStory("");
-    readAloud.stop();
     window.history.replaceState(null, "", "/");
   }
 
@@ -129,7 +122,10 @@ export default function HomePage() {
         </div>
       )}
 
-      {readAloud.available && character && <ReadAloudToggle on={readAloud.on} onToggle={readAloud.toggle} />}
+      {!working && character && story && (
+        // The key starts a new story without the last one's audiobook
+        <Audiobook key={character.id} src={`/api/stories/${character.id}/audiobook`} kind="story" />
+      )}
 
       {!working && character && <DragonButton onClick={startOver}>Make me another story</DragonButton>}
 
@@ -275,8 +271,6 @@ export default function HomePage() {
               </label>
             </details>
           </section>
-
-          {readAloud.available && <ReadAloudToggle on={readAloud.on} onToggle={readAloud.toggle} />}
 
           <DragonButton onClick={makeStory}>{CHARACTER_KINDS[kind].button}</DragonButton>
         </>

@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { micromark } from "micromark";
 import posthog from "posthog-js";
 import { faBookSparkles, faPlus, faWandMagicSparkles } from "@fortawesome/pro-duotone-svg-icons";
+import Audiobook from "@/components/Audiobook";
 import Icon from "@/components/Icon";
 import { possessive } from "@/lib/characters";
 import { CONNECTORS, type Part, splitBook } from "@/lib/tale";
@@ -124,6 +125,8 @@ export default function FinishedBook({ id, heroName, parts, title: savedTitle, b
           </ol>
         )}
       </article>
+
+      {book && !making && <Audiobook src={`/api/tales/${id}/audiobook`} kind="tale" />}
 
       <footer className="flex flex-wrap justify-center gap-3">
         {editable ? (
