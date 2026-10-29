@@ -1,5 +1,7 @@
+import { dispatchesDragon, enforcementResponse, offTopicProbability } from "@/lib/enforcement";
 import { MAX_DETAILS_LENGTH } from "@/lib/hero-draft";
 import { DEFAULT_MODEL } from "@/lib/models";
+import { GENRES } from "@/lib/prompt";
 import { createServerClient } from "@/lib/supabase";
 import { isHero } from "@/lib/tale";
 import { cleanIdea, streamPart } from "@/lib/tales";
@@ -12,15 +14,24 @@ export async function POST(request: Request) {
   const hero: unknown = body && typeof body === "object" ? Reflect.get(body, "hero") : null;
   if (!isHero(hero) || !cleanIdea(hero.name)) return new Response("Invalid hero", { status: 400 });
 
+  // Heroes come from the browser, rolled or built, so they're capped like any other writer text
+  const name = cleanIdea(hero.name, 60);
+  const type = cleanIdea(hero.type, 300);
+  const details = hero.details ? cleanIdea(hero.details, MAX_DETAILS_LENGTH) : "";
+  // "Anything else about them?" is the only writer-typed text at the start. Check it before insert.
+  if (details) {
+    const probability = await offTopicProbability({ genre: GENRES[hero.kind], hero: name, writerText: details });
+    if (dispatchesDragon(probability)) return enforcementResponse(probability);
+  }
+
   const { data: tale, error } = await createServerClient()
     .from("tales")
     .insert({
-      // Heroes come from the browser, rolled or built, so they're capped like any other writer text
       hero: {
         kind: hero.kind,
-        name: cleanIdea(hero.name, 60),
-        type: cleanIdea(hero.type, 300),
-        ...(hero.details ? { details: cleanIdea(hero.details, MAX_DETAILS_LENGTH) } : {}),
+        name,
+        type,
+        ...(details ? { details } : {}),
       },
       model: DEFAULT_MODEL,
       d20: Reflect.get(body ?? {}, "d20") === true,
