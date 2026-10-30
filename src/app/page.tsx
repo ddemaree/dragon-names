@@ -124,7 +124,13 @@ export default function HomePage() {
 
       {!working && character && story && (
         // The key starts a new story without the last one's audiobook
-        <Audiobook key={character.id} src={`/api/stories/${character.id}/audiobook`} kind="story" />
+        <Audiobook
+          key={character.id}
+          src={`/api/stories/${character.id}/audiobook`}
+          kind="story"
+          text={story}
+          title={`The story of ${character.name}`}
+        />
       )}
 
       {!working && character && <DragonButton onClick={startOver}>Make me another story</DragonButton>}

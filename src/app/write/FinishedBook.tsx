@@ -7,6 +7,7 @@ import posthog from "posthog-js";
 import { faBookSparkles, faPlus, faWandMagicSparkles } from "@fortawesome/pro-duotone-svg-icons";
 import Audiobook from "@/components/Audiobook";
 import Icon from "@/components/Icon";
+import { bookText } from "@/lib/audiobook-text";
 import { possessive } from "@/lib/characters";
 import { CONNECTORS, type Part, splitBook } from "@/lib/tale";
 
@@ -126,7 +127,14 @@ export default function FinishedBook({ id, heroName, parts, title: savedTitle, b
         )}
       </article>
 
-      {book && !making && <Audiobook src={`/api/tales/${id}/audiobook`} kind="tale" />}
+      {book && !making && (
+        <Audiobook
+          src={`/api/tales/${id}/audiobook`}
+          kind="tale"
+          text={bookText(book.title, book.book)}
+          title={book.title || `${possessive(heroName)} story`}
+        />
+      )}
 
       <footer className="flex flex-wrap justify-center gap-3">
         {editable ? (
