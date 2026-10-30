@@ -10,6 +10,7 @@ import { faDragon, faSparkles } from "@fortawesome/pro-duotone-svg-icons";
 import Layout from "@/components/Layout";
 import DragonButton from "@/components/DragonButton";
 import CharacterCard from "@/components/CharacterCard";
+import Audiobook from "@/components/Audiobook";
 import Icon from "@/components/Icon";
 import {
   CHARACTER_KINDS,
@@ -27,7 +28,7 @@ const ImaginingAnimation = dynamic(() => import("@/components/ImaginingAnimation
   ssr: false,
 });
 
-type Character = { kind: CharacterKind; name: string; type: string; setting: string };
+type Character = { id: string; kind: CharacterKind; name: string; type: string; setting: string };
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -61,6 +62,7 @@ export default function HomePage() {
       if (!response.ok || !response.body) throw new Error(response.statusText);
 
       setCharacter({
+        id: response.headers.get("x-story-id") ?? "",
         kind,
         name: decodeURIComponent(response.headers.get("x-character-name") ?? ""),
         type: decodeURIComponent(response.headers.get("x-character-type") ?? ""),
@@ -118,6 +120,11 @@ export default function HomePage() {
           <DragonButton disabled={true}>Imagining dragons…</DragonButton>
           <ImaginingAnimation />
         </div>
+      )}
+
+      {!working && character && story && (
+        // The key starts a new story without the last one's audiobook
+        <Audiobook key={character.id} src={`/api/stories/${character.id}/audiobook`} kind="story" />
       )}
 
       {!working && character && <DragonButton onClick={startOver}>Make me another story</DragonButton>}
