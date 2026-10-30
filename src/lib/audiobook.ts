@@ -4,8 +4,8 @@ import { generateSpeech } from "ai";
 import { get, put } from "@vercel/blob";
 import { flushTelemetry } from "./telemetry";
 
-// Steady narration for long-form audio, through AI Gateway
-const MODEL = "elevenlabs/eleven-multilingual-v2";
+// Expressive narration, through AI Gateway
+const MODEL = "elevenlabs/eleven-v4";
 const VOICE = "c6SfcYrb2t09NHXiT80T";
 // The model takes up to 10,000 characters per request
 const MAX_CHUNK = 9000;
