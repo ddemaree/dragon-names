@@ -42,7 +42,12 @@ export default async function StoryPage({ params }: Props) {
         className="flex flex-col gap-5 rounded-[28px] bg-white/7 px-6 py-8 text-[19px] leading-relaxed text-ink-soft shadow-[inset_0_0_0_1px_rgb(255_255_255/0.14)] sm:px-11 sm:py-10"
         dangerouslySetInnerHTML={{ __html: micromark(story.story) }}
       />
-      <Audiobook src={`/api/stories/${storyId}/audiobook`} kind="story" />
+      <Audiobook
+        src={`/api/stories/${storyId}/audiobook`}
+        kind="story"
+        text={story.story}
+        title={`The story of ${story.name}`}
+      />
       <DragonButton href="/">Make me another story</DragonButton>
     </Layout>
   );
